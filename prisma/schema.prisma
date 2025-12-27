@@ -7,7 +7,7 @@ datasource db {
   provider = "postgresql"
 }
 
-model Sample {
+/*model Sample {
   id        Int       @id @default(autoincrement())
   name      String
   deletedAt DateTime?
@@ -15,4 +15,312 @@ model Sample {
   updatedAt DateTime  @updatedAt
 
   @@map("samples")
+}*/
+
+enum Role {
+  USER
+  TENANT
+}
+
+enum Provider {
+  GOOGLE
+  CREDENTIAL
+}
+
+enum RoomClass {
+  ENTIRE
+  SUPERIOR
+  DELUXE
+  SHARED
+}
+
+enum Status {
+  WAITING_FOR_PAYMENT
+  WAITING_FOR_CONFIRMATION
+  CONFIRMED
+  CANCELLED_BY_USER
+  CANCELLED_BY_TENANT
+  EXPIRED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CREDIT_CARD
+  GOPAY
+  SHOPEEPAY
+}
+
+model User {
+  id        Int     @id @default(autoincrement())
+  firstName String?
+  lastName  String?
+
+  email        String  @unique
+  pendingEmail String? @unique
+
+  provider Provider
+  password String?
+
+  address  String?
+  imageUrl String?
+  aboutMe  String? @db.Text
+  phone    String?
+
+  role       Role    @default(USER)
+  isVerified Boolean @default(false)
+
+  token     String?   @unique
+  expiresAt DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  transactions Transaction[]
+  reviews      Review[]
+  tenant       Tenant?
+
+  @@map("users")
+}
+
+model Tenant {
+  id         Int    @id @default(autoincrement())
+  tenantName String
+
+  imageUrl String?
+  phone    String?
+
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id])
+
+  bankName   String
+  bankNumber String
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  properties Property[]
+  categories Category[]
+
+  @@map("tenants")
+}
+
+model Property {
+  id          Int    @id @default(autoincrement())
+  name        String
+  description String @db.Text
+
+  tenantId Int
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  categoryId Int?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  maxGuests Int?
+  address   String?
+
+  cityId Int
+  city   City @relation(fields: [cityId], references: [id])
+
+  latitude  Float?
+  longitude Float?
+  radius    Int?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  propertyImages PropertyImage[]
+  seasonalRates  SeasonalRate[]
+  rooms          Room[]
+  amenities      Amenity[]
+
+  @@index([tenantId])
+  @@index([categoryId])
+  @@map("properties")
+}
+
+model City {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  properties Property[]
+}
+
+model Amenity {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  propertyId Int
+  property   Property @relation(fields: [propertyId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([propertyId, name])
+  @@map("amenities")
+}
+
+model PropertyImage {
+  id Int @id @default(autoincrement())
+
+  propertyId Int
+  property   Property @relation(fields: [propertyId], references: [id])
+
+  urlImages String?
+  isCover   Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("propertyImages")
+}
+
+model Room {
+  id          Int    @id @default(autoincrement())
+  name        String
+  description String @db.Text
+  basePrice   Int
+  totalGuests Int?
+
+  roomClass  RoomClass
+  beds       Int?
+  bath       Int?
+  images     String?
+  propertyId Int
+  property   Property  @relation(fields: [propertyId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  roomNonAvailability RoomNonAvailability[]
+  roomImages          RoomImage[]
+  seasonalRates       SeasonalRate[]
+  transactions        Transaction[]
+
+  @@index([propertyId])
+  @@map("rooms")
+}
+
+model RoomImage {
+  id     Int @id @default(autoincrement())
+  roomId Int
+
+  room      Room    @relation(fields: [roomId], references: [id])
+  urlImages String?
+  isCover   Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("roomImages")
+}
+
+model RoomNonAvailability {
+  id     Int  @id @default(autoincrement())
+  roomId Int
+  room   Room @relation(fields: [roomId], references: [id])
+
+  date          DateTime
+  reason        String?
+  roomInventory Int
+
+  @@unique([roomId, date])
+  @@map("roomNonAvailability")
+}
+
+model SeasonalRate {
+  id                   Int      @id @default(autoincrement())
+  name                 String
+  startDate            DateTime
+  endDate              DateTime
+  priceAdjustmentValue Int
+
+  roomId Int
+  room   Room @relation(fields: [roomId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  property   Property? @relation(fields: [propertyId], references: [id])
+  propertyId Int?
+
+  @@unique([roomId, startDate, endDate])
+  @@map("seasonalRates")
+}
+
+model Category {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  tenantId Int
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  properties Property[]
+
+  @@unique([tenantId, name])
+  @@map("categories")
+}
+
+model Transaction {
+  id     String @unique @default(cuid())
+  userId Int
+  user   User   @relation(fields: [userId], references: [id])
+  roomId Int
+  room   Room   @relation(fields: [roomId], references: [id])
+
+  checkIn         DateTime
+  checkOut        DateTime
+  totalGuests     Int?
+  paymentMethod   PaymentMethod?
+  paymentProof    String?
+  paymentDate     DateTime?
+  totalPrice      Int
+  status          Status         @default(WAITING_FOR_PAYMENT)
+  snapData        Json?
+  snapToken       String?
+  snapRedirectUrl String?
+  expiresAt       DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  reviews Review[]
+
+  @@map("transactions")
+}
+
+model Review {
+  id Int @id @default(autoincrement())
+
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+
+  ratings  Int
+  comments String  @db.Text
+  images   String?
+  reply    String? @db.Text
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("reviews")
 }
