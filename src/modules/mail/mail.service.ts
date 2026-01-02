@@ -18,15 +18,15 @@ export class MailService {
 
   renderTemplate = async (templateName: string, context: any) => {
     console.log("__dirname:", __dirname);
-   //const templateDir = path.resolve(__dirname, "./templates");
+    const templateDir = path.resolve(__dirname, "./templates");
     
     const templatePath = path.join(
-      process.cwd(),
-      "src",
-      "modules",
-      "mail",
-      "templates",
-      `${templateName}.hbs`);
+      //process.cwd(),
+      //"src",
+      //"modules",
+      //"mail",
+      //"templates",
+      templateDir, `${templateName}.hbs`);
     const templateSource = await fs.readFile(templatePath, "utf-8");
     const compiledTemplate = handlebars.compile(templateSource);
     return compiledTemplate(context);

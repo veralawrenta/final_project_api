@@ -1,4 +1,4 @@
-import { Router } from "express";
+/*import { Router } from "express";
 import { SampleController } from "./sample.controller";
 import { validateBody } from "../../middlewares/validation.middleware";
 import { CreateSampleDTO } from "./dto/create-sample.dto";
@@ -25,4 +25,4 @@ export class SampleRouter {
   getRouter = () => {
     return this.router;
   };
-}
+}*/

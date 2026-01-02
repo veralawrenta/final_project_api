@@ -3,14 +3,6 @@ import { Provider, Role } from "../../../../generated/prisma/enums";
 
 export class RegisterUserDTO {
   @IsNotEmpty()
-  @IsString()
-  firstName!: string;
-
-  @IsNotEmpty()
-  @IsString()
-  lastName!: string;
-
-  @IsNotEmpty()
   @IsEmail({}, {message: "Invalid email format"})
   email!: string;
 }

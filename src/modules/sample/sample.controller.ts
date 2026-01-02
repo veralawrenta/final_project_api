@@ -1,5 +1,5 @@
-import { Request, Response } from "express";
-import { SampleService } from "./sample.service";
+/*import { Request, Response } from "express";
+
 
 export class SampleController {
   private sampleService: SampleService;
@@ -18,3 +18,4 @@ export class SampleController {
     res.status(200).send(result);
   };
 }
+*/
