@@ -37,9 +37,9 @@ export class AuthController {
       res.status(201).send(result);
   };
 
-  verifyEmailToken = async (req: Request, res: Response) => {
+  validateEmailToken = async (req: Request, res: Response) => {
     const data: VerifyEmailTokenDTO = req.body;
-    const result = await this.authService.verifyEmailToken(data);
+    const result = await this.authService.validateEmailToken(data);
     res.status(200).send(result);
   }
 

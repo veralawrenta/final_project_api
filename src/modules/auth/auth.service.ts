@@ -32,21 +32,19 @@ export class AuthService {
       where: { email: body.email },
     });
 
-    if (existingUser) throw new ApiError("email already exist", 400);
-
+    if (existingUser) throw new ApiError("Email already exist", 400);
     //const token = randomBytes(32).toString("hex");
     //const expiresAt = addHours(new Date(), 1);
 
     const user = await this.prisma.user.create({
       data: {
-        firstName: body.firstName,
-        lastName: body.lastName,
         email: body.email,
         role: Role.USER,
         provider: Provider.CREDENTIAL,
         isVerified: false,
       },
     });
+    console.log("New user created:", user.id);
 
     const payload = { id: user.id, role: user.role };
     const token = jwt.sign(payload, process.env.JWT_VERIFY_SECRET!, {
@@ -57,7 +55,7 @@ export class AuthService {
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        token,
+        verificationToken: token,
         expiresAt,
       },
     });
@@ -111,7 +109,7 @@ export class AuthService {
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        token,
+        verificationToken: token,
         expiresAt,
       },
     });
@@ -128,9 +126,9 @@ export class AuthService {
     return { message: "Please check your email to verify your account" };
   };
 
-  verifyEmailToken = async (body: VerifyEmailTokenDTO) => {
+  validateEmailToken = async (body: VerifyEmailTokenDTO) => {
     const user = await this.prisma.user.findFirst({
-      where: { token: body.token },
+      where: { verificationToken: body.token },
     });
     if (!user) {
       throw new ApiError("User not found", 400);
@@ -144,7 +142,7 @@ export class AuthService {
       //console.log("Token expired for user:", existingUser.id);
       throw new ApiError("Token has expired", 400);
     }
-    if (user.token !== body.token) {
+    if (user.verificationToken !== body.token) {
       //console.log("Token mismatch for user:", existingUser.id);
       throw new ApiError("Invalid token", 400);
     }
@@ -177,7 +175,7 @@ export class AuthService {
     }
 
     const currentUser = await this.prisma.user.findFirst({
-      where: { token },
+      where: { verificationToken: token },
     });
 
     if (!currentUser) {
@@ -210,7 +208,7 @@ export class AuthService {
       data: {
         password: hashedPassword,
         isVerified: true,
-        token: null,
+        verificationToken: null,
         expiresAt: null,
       },
     });
@@ -285,7 +283,7 @@ export class AuthService {
       user.email,
       "Forgot Password",
       "forgot-password",
-      { link: `http://localhost:3000/reset-password?token=${accessToken}` }
+      { ResetPasswordLink: `http://localhost:3000/reset-password?token=${accessToken}` }
     );
 
     return { message: "send email success" };
@@ -347,7 +345,7 @@ export class AuthService {
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        token,
+        verificationToken: token,
         expiresAt,
       },
     });
@@ -399,7 +397,7 @@ export class AuthService {
       data: {
         pendingEmail: newEmail,
         isVerified: false,
-        token,
+        verificationToken: token,
         expiresAt,
       },
     });
@@ -416,9 +414,9 @@ export class AuthService {
     return { message: "Please check your new email to verify your account" };
   };
 
-  verifyChangeEmail = async (token: string) => {
+  verifyChangeEmail = async (verificationToken: string) => {
     const user = await this.prisma.user.findUnique({
-      where: { token },
+      where: { verificationToken },
     });
     if (!user) {
       throw new ApiError("User not found", 404);
@@ -428,7 +426,7 @@ export class AuthService {
       throw new ApiError("Token expired", 400);
     }
 
-    const decodedToken = jwt.verify(token, process.env.JWT_VERIFY_SECRET!) as {
+    const decodedToken = jwt.verify(verificationToken, process.env.JWT_VERIFY_SECRET!) as {
       id: number;
     };
 
@@ -441,7 +439,7 @@ export class AuthService {
         email: user.pendingEmail!,
         pendingEmail: null,
         isVerified: true,
-        token: null,
+        verificationToken: null,
         expiresAt: null,
       },
     });

@@ -2,7 +2,7 @@ import { PrismaClient } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { CreateSampleDTO } from "./dto/create-sample.dto";
 
-export class SampleService {
+/*export class SampleService {
   private prisma: PrismaClient;
 
   constructor() {
@@ -17,3 +17,4 @@ export class SampleService {
     return await this.prisma.sample.create({ data: body });
   };
 }
+*/

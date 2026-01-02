@@ -2,8 +2,8 @@ import { Router } from "express";
 import { validateBody } from "../../middlewares/validation.middleware";
 import { AuthController } from "./auth.controller";
 import { LoginDTO, RegisterTenantDTO, RegisterUserDTO } from "./dto/auth.dto";
-import { JWTMiddleware } from "../../middlewares/jwt.middleware";
 import { JWT_RESET_SECRET, JWT_VERIFY_SECRET } from "../../config/env";
+import { JWTMiddleware } from "../../middlewares/jwt.middleware";
 
 export class AuthRouter {
   private router: Router;
@@ -24,7 +24,7 @@ export class AuthRouter {
       validateBody(RegisterTenantDTO),
       this.authController.registerTenantEmail
     );
-    this.router.get("/verify/:token", this.authController.verifyEmailToken);
+    this.router.get("/validate/:token", this.authController.validateEmailToken);
     this.router.post("/login", validateBody(LoginDTO), this.authController.loginEmail);
     this.router.post("/resend-verification", this.authController.resendVerificationEmail);
     

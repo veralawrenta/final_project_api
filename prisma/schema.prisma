@@ -7,15 +7,16 @@ datasource db {
   provider = "postgresql"
 }
 
-/*model Sample {
-  id        Int       @id @default(autoincrement())
-  name      String
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@map("samples")
-}*/
+/**
+ * model Sample {
+ * id        Int       @id @default(autoincrement())
+ * name      String
+ * deletedAt DateTime?
+ * createdAt DateTime  @default(now())
+ * updatedAt DateTime  @updatedAt
+ * @@map("samples")
+ * }
+ */
 
 enum Role {
   USER
@@ -69,8 +70,8 @@ model User {
   role       Role    @default(USER)
   isVerified Boolean @default(false)
 
-  token     String?   @unique
-  expiresAt DateTime?
+  verificationToken String?   @unique
+  expiresAt         DateTime?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -85,10 +86,9 @@ model User {
 
 model Tenant {
   id         Int    @id @default(autoincrement())
-  tenantName String
+  tenantName String?
 
   imageUrl String?
-  phone    String?
 
   userId Int  @unique
   user   User @relation(fields: [userId], references: [id])
