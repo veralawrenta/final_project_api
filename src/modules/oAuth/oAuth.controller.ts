@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { OAuthService } from "./oAuth.service";
 import { ApiError } from "../../utils/api-error";
-import { Role } from "../../../generated/prisma/enums";
+
 
 export class OAuthController {
   private oAuthService: OAuthService;
@@ -12,16 +12,13 @@ export class OAuthController {
 
   googleLogin = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { googleToken, role } = req.body;
+      const { googleToken } = req.body;
 
       if (!googleToken) {
         throw new ApiError("Google token required", 400);
       }
 
-     if (!role.user && role !==role.Role) {
-        throw new ApiError("Role is required", 400);
-      }
-      const result = await this.oAuthService.googleLogin(googleToken, role);
+      const result = await this.oAuthService.googleLogin(googleToken);
       res.status(200).send(result);
     } catch (err) {
       next(err);

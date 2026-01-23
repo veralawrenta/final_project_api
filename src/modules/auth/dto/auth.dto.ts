@@ -88,5 +88,16 @@ export class RequestEmailChangeDTO {
   password!: string;
 }
 
+export class ChangePasswordDTO {
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8, {message: "Password must be at least 8 characters long"})
+  currentPassword!: string;
+  
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8, {message: "Password must be at least 8 characters long"})
+  newPassword!: string;
+}
 
 

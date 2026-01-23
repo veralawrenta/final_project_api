@@ -1,13 +1,16 @@
+import { plainToInstance } from "class-transformer";
 import { Request, Response } from "express";
+import { ApiError } from "../../utils/api-error";
 import { AuthService } from "./auth.service";
 import {
+  ChangePasswordDTO,
+  ForgotPasswordDTO,
   LoginDTO,
-  RegisterTenantDTO,
   RegisterUserDTO,
+  ResetPasswordDTO,
   SetPasswordDTO,
   VerifyEmailTokenDTO
 } from "./dto/auth.dto";
-import { ApiError } from "../../utils/api-error";
 
 export class AuthController {
   private authService: AuthService;
@@ -17,52 +20,48 @@ export class AuthController {
   }
 
   registerUserEmail = async (req: Request, res: Response) => {
-    const data: RegisterUserDTO = req.body;
-    if (!data.firstName || !data.lastName || !data.email) {
-      throw new Error("Missing required fields: firstName, lastName, email");
-    }
-    try {
-      const result = await this.authService.registerUserEmail(req.body);
-      res.status(201).send(result);
-    } catch (error: any) {
-      res.status(401).send({
-        error: error.message,
-      });
-    }
+    const data = plainToInstance(RegisterUserDTO, req.body);
+    const result = await this.authService.registerUserEmail(data);
+    res.status(201).send(result);
   };
 
   registerTenantEmail = async (req: Request, res: Response) => {
-      const data: RegisterTenantDTO = req.body;
-      const result = await this.authService.registerTenantEmail(data);
-      res.status(201).send(result);
+    const data = plainToInstance(RegisterUserDTO, req.body);
+    const result = await this.authService.registerUserEmail(data);
+    res.status(201).send(result);
   };
 
   validateEmailToken = async (req: Request, res: Response) => {
-    const data: VerifyEmailTokenDTO = req.body;
+    const data = plainToInstance(VerifyEmailTokenDTO, req.body);
     const result = await this.authService.validateEmailToken(data);
     res.status(200).send(result);
-  }
+  };
 
   verifyAndSetPassword = async (req: Request, res: Response) => {
-    const data = req.body as SetPasswordDTO;
+    const data = plainToInstance(SetPasswordDTO, req.body);
     const result = await this.authService.verifyAndSetPassword(data);
     res.status(201).send(result);
   };
 
   loginEmail = async (req: Request, res: Response) => {
-    const data : LoginDTO = req.body;
+    const data = plainToInstance(LoginDTO, req.body);
     const result = await this.authService.loginEmail(data);
     return res.status(200).send(result);
   };
 
   forgotPassword = async (req: Request, res: Response) => {
-    const result = await this.authService.forgotPassword(req.body);
+    const data = plainToInstance(ForgotPasswordDTO, req.body);
+    const result = await this.authService.forgotPassword(data);
     return res.status(200).send(result);
   };
 
   resetPassword = async (req: Request, res: Response) => {
-    const authUserId = Number(res.locals.user.id);
-    const result = await this.authService.resetPassword(req.body, authUserId);
+    const verificationToken = req.query.token as string;
+    const data = plainToInstance(ResetPasswordDTO, req.body);
+    const result = await this.authService.resetPassword(
+      data,
+      verificationToken
+    );
     return res.status(201).send(result);
   };
 
@@ -73,13 +72,28 @@ export class AuthController {
   };
 
   changeEmail = async (req: Request, res: Response) => {
-    const authUserId = res.locals.user.id
+    const authUserId = res.locals.user.id;
     const { newEmail, password } = req.body;
     const result = await this.authService.changeEmail(authUserId, newEmail);
     return res.status(200).send(result);
   };
 
   verifyChangeEmail = async (req: Request, res: Response) => {
-    
-  }
+    const token = req.query.token as string;
+    if (!token) {
+      throw new ApiError("Verification token is required", 400);
+    }
+    const result = await this.authService.verifyChangeEmail(token);
+    return res.status(200).json(result);
+  };
+
+  changePassword = async (req: Request, res: Response) => {
+    const authUserId = Number(res.locals.user.id);
+    const data = plainToInstance(ChangePasswordDTO, req.body);
+    const result = await this.authService.changePassword(
+      authUserId,
+      data
+    );
+    return res.status(200).json(result);
+  };
 }

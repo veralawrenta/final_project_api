@@ -1,47 +1,53 @@
 import { NextFunction, Request, Response } from "express";
-import { prisma } from "../lib/prisma";
-import { Role } from "../../generated/prisma/enums";
 import { ApiError } from "../utils/api-error";
+import { Role } from "../../generated/prisma/client";
+import { prisma } from "../lib/prisma";
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: number;
-        role: Role;
-      };
-    }
-  }
-}
+export class RoleMiddleware {
+  requireRoles = (...allowedRoles: Role[]) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      const user = res.locals.user;
 
-export const verifyTenant = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const user = req.user;
+      if (!user || !user.role) {
+        throw new ApiError("Unauthorized", 401);
+      }
 
-  if (!user || user.role !== "TENANT") {
-    res
-      .status(403)
-      .json({ message: "Unauthorized: Access is allowed for Tenants only" });
-    return;
-  }
-  next();
-};
+      if (!allowedRoles.includes(user.role)) {
+        throw new ApiError("Forbidden: insufficient role", 403);
+      }
 
-export const verifyUser = async (
+      next();
+    };
+  };
+  requirePropertyOwnership = async (
     req: Request,
     res: Response,
     next: NextFunction
   ) => {
-    const user = req.user;
-  
-    if (!user || user.role !== "USER") {
-      res
-        .status(403)
-        .json({ message: "Unauthorized: Access is allowed for Users only" });
-      return;
+    try {
+      const tenantId = res.locals.user?.tenant?.id;
+      const propertyId = Number(req.params.propertyId || req.body.propertyId);
+
+      if (!tenantId || !propertyId) {
+        throw new ApiError("Unauthorized", 401);
+      }
+
+      const property = await prisma.property.findFirst({
+        where: {
+          id: propertyId,
+          tenantId,
+          deletedAt: null,
+        },
+      });
+
+      if (!property) {
+        throw new ApiError("Property not found or not owned by tenant", 403);
+      }
+
+      res.locals.property = property;
+      next();
+    } catch (error) {
+      next(error);
     }
-    next();
   };
+}

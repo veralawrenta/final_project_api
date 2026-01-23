@@ -16,7 +16,6 @@ export const validateBody = (dtoClass: any) => {
 
       throw new ApiError(message, 400);
     }
-
     next();
   };
 };

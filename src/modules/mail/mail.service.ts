@@ -17,7 +17,6 @@ export class MailService {
   }
 
   renderTemplate = async (templateName: string, context: any) => {
-    console.log("__dirname:", __dirname);
     const templateDir = path.resolve(__dirname, "./templates");
     
     const templatePath = path.join(

@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { validateBody } from "../../middlewares/validation.middleware";
-import { AuthController } from "./auth.controller";
-import { LoginDTO, RegisterTenantDTO, RegisterUserDTO } from "./dto/auth.dto";
 import { JWT_RESET_SECRET, JWT_VERIFY_SECRET } from "../../config/env";
 import { JWTMiddleware } from "../../middlewares/jwt.middleware";
+import { validateBody } from "../../middlewares/validation.middleware";
+import { AuthController } from "./auth.controller";
+import { ChangePasswordDTO, ForgotPasswordDTO, LoginDTO, RegisterTenantDTO, RegisterUserDTO, ResetPasswordDTO } from "./dto/auth.dto";
 
 export class AuthRouter {
   private router: Router;
@@ -29,15 +29,17 @@ export class AuthRouter {
     this.router.post("/resend-verification", this.authController.resendVerificationEmail);
     
     this.router.patch("/set-password", this.authController.verifyAndSetPassword);
-    this.router.post("/forgot-password", this.authController.forgotPassword);
+    this.router.post("/forgot-password", validateBody(ForgotPasswordDTO), this.authController.forgotPassword);
     this.router.patch(
-      "/reset-password",
+      "/reset-password", validateBody(ResetPasswordDTO),
       this.jwt.verifyToken(JWT_RESET_SECRET!),
       this.authController.resetPassword
     );
     
     this.router.post("/change-email", this.authController.changeEmail);
-    this.router.patch("/verify-change-email/:token", this.authController.verifyChangeEmail);
+    this.router.patch("/verify-change-email/:token",  this.jwt.verifyToken(JWT_VERIFY_SECRET!), this.authController.verifyChangeEmail);
+    this.router.patch(
+      "/change-password", validateBody(ChangePasswordDTO), this.authController.changePassword)
   };
 
   getRouter = () => {
