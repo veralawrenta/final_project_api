@@ -1,12 +1,13 @@
 import { addHours } from "date-fns";
 import jwt from "jsonwebtoken";
+import { PrismaClient, Provider, Role } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import { MailService } from "../mail/mail.service";
-import { PrismaClient, Provider, Role } from "../../../generated/prisma/client";
-import { comparePassword, hashPassword } from "../../utils/password";
 import { verifyToken } from "../../utils/jwt";
+import { comparePassword, hashPassword } from "../../utils/password";
+import { MailService } from "../mail/mail.service";
 import {
+  ChangePasswordDTO,
   ForgotPasswordDTO,
   LoginDTO,
   RegisterTenantDTO,
@@ -16,7 +17,6 @@ import {
   SetPasswordDTO,
   VerifyEmailTokenDTO,
 } from "./dto/auth.dto";
-
 
 export class AuthService {
   private prisma: PrismaClient;
@@ -63,9 +63,9 @@ export class AuthService {
     let sendEmail = await this.mailService.sendMail(
       user.email,
       "Email Verification",
-      "welcome",
+      "welcome-user",
       {
-        VerificationLink: `${process.env.FRONTEND_URL}/email-verification?token=${token}`,
+        UserVerificationLink: `${process.env.FRONTEND_URL}/email-verification?token=${token}`,
       }
     );
     console.log("Email sent:", sendEmail);
@@ -117,9 +117,9 @@ export class AuthService {
     let sendEmail = await this.mailService.sendMail(
       user.email,
       "Verify Email",
-      "welcome",
+      "welcome-tenant",
       {
-        VerificationLink: `${process.env.FRONTEND_URL}/verify-email?token=${token}`,
+        TenantVerificationLink: `${process.env.FRONTEND_URL}/auth/verify?token=${token}`,
       }
     );
     console.log({ message: "email sent successful", sendEmail });
@@ -135,15 +135,12 @@ export class AuthService {
     }
 
     if (user.isVerified) {
-      //console.log("User already verified:", existingUser.id);
       throw new ApiError("User already verified", 400);
     }
     if (user.expiresAt! < new Date()) {
-      //console.log("Token expired for user:", existingUser.id);
       throw new ApiError("Token has expired", 400);
     }
     if (user.verificationToken !== body.token) {
-      //console.log("Token mismatch for user:", existingUser.id);
       throw new ApiError("Invalid token", 400);
     }
 
@@ -151,8 +148,6 @@ export class AuthService {
       body.token,
       process.env.JWT_VERIFY_SECRET!
     ) as { id: number; role: Role };
-
-    console.log("Decoded token:", decodedToken);
 
     if (!decodedToken || decodedToken.id !== user.id) {
       throw new ApiError("Invalid token", 400);
@@ -186,6 +181,10 @@ export class AuthService {
       throw new ApiError("User already verified", 400);
     }
 
+    if (currentUser.provider !== "CREDENTIAL") {
+      throw new ApiError("Not eligible to create password", 400);
+    }
+
     if (currentUser.password) {
       throw new ApiError(
         "Password already set. Please use forgot password to reset your password",
@@ -212,8 +211,6 @@ export class AuthService {
         expiresAt: null,
       },
     });
-    console.log("user id:", currentUser);
-    console.log("DB isVerified:", updatedUser.isVerified);
     return {
       message: "Password set successfully",
       user: {
@@ -251,7 +248,7 @@ export class AuthService {
     }
 
     const payload = { id: user.id, role: user.role };
-    const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, {
+    const accessToken = jwt.sign(payload, process.env.JWT_ACCESS_SECRET!, {
       expiresIn: "2h",
     });
 
@@ -275,27 +272,57 @@ export class AuthService {
     }
 
     const payload = { id: user.id, role: user.role };
-    const accessToken = jwt.sign(payload, process.env.JWT_RESET!, {
+    const accessToken = jwt.sign(payload, process.env.JWT_RESET_SECRET!, {
       expiresIn: "1h",
+    });
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        verificationToken: accessToken,
+        expiresAt,
+      },
     });
 
     await this.mailService.sendMail(
       user.email,
       "Forgot Password",
       "forgot-password",
-      { ResetPasswordLink: `http://localhost:3000/reset-password?token=${accessToken}` }
+      {
+        ResetPasswordLink: `http://localhost:3000/auth/reset-password?token=${accessToken}`,
+      }
     );
 
     return { message: "send email success" };
   };
 
-  resetPassword = async (body: ResetPasswordDTO, authUserId: number) => {
+  resetPassword = async (body: ResetPasswordDTO, verificationToken: string) => {
+    let decoded: any;
+
+    try {
+      decoded = jwt.verify(verificationToken, process.env.JWT_RESET!);
+    } catch (error) {
+      throw new ApiError("Invalid or expired reset token", 400);
+    }
+
     const user = await this.prisma.user.findFirst({
-      where: { id: authUserId },
+      where: { id: decoded.id },
     });
 
     if (!user) {
-      throw new ApiError("user not found", 404);
+      throw new ApiError("Invalid or outdated reset link", 404);
+    }
+
+    if (user.verificationToken !== verificationToken) {
+      throw new ApiError(
+        "This reset link has been replaced by a newer one",
+        400
+      );
+    }
+
+    if (!user.expiresAt || user.expiresAt < new Date()) {
+      throw new ApiError("Reset token expired", 400);
     }
 
     const isSamePassword = await comparePassword(body.password, user.password!);
@@ -309,8 +336,12 @@ export class AuthService {
     const hashedPassword = await hashPassword(body.password);
 
     await this.prisma.user.update({
-      where: { id: authUserId },
-      data: { password: hashedPassword },
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        verificationToken: null,
+        expiresAt: null,
+      },
     });
     return { message: "Password reset successful" };
   };
@@ -333,8 +364,6 @@ export class AuthService {
     if (user.isVerified) {
       throw new ApiError("user already verified", 400);
     }
-    //const token = randomBytes(32).toString("hex");
-    //const expiresAt = addHours(new Date(), 1);
 
     const payload = { id: user.id, role: user.role };
     const token = jwt.sign(payload, process.env.JWT_VERIFY_SECRET!, {
@@ -354,7 +383,7 @@ export class AuthService {
       "Email Verification",
       "welcome",
       {
-        VerificationLink: `${process.env.FRONTEND_URL}/email-verification?token=${token}`,
+        ResendVerificationLink: `${process.env.FRONTEND_URL}/auth/setpassword?token=${token}`,
       }
     );
     return { message: "Please check your email to verify your account" };
@@ -407,7 +436,7 @@ export class AuthService {
       "Email Verification",
       "change-email-verification",
       {
-        VerificationLink: `http://localhost:3000/email-verification?token=${token}`,
+        ChangeEmailVerificationLink: `http://localhost:3000/email-verification?token=${token}`,
       }
     );
     console.log("Email sent:", sendEmail);
@@ -426,7 +455,10 @@ export class AuthService {
       throw new ApiError("Token expired", 400);
     }
 
-    const decodedToken = jwt.verify(verificationToken, process.env.JWT_VERIFY_SECRET!) as {
+    const decodedToken = jwt.verify(
+      verificationToken,
+      process.env.JWT_VERIFY_SECRET!
+    ) as {
       id: number;
     };
 
@@ -445,5 +477,47 @@ export class AuthService {
     });
 
     return { message: "Email changed and verified successfully" };
+  };
+
+  changePassword = async (authUserId: number, body: ChangePasswordDTO) => {
+    const user = await this.prisma.user.findUnique({
+      where: { id: authUserId },
+    });
+
+    if (!user) {
+      throw new ApiError("User not found", 404);
+    }
+
+    if (!user.password || user.provider !== "CREDENTIAL") {
+      throw new ApiError(
+        "Password cannot be changed if you register with Google",
+        400
+      );
+    }
+
+    const isMatch = await comparePassword(body.currentPassword, user.password);
+    if (!isMatch) {
+      throw new ApiError("Current password is incorrect", 400);
+    }
+
+    const isSamePassword = await comparePassword(
+      body.newPassword,
+      user.password
+    );
+    if (isSamePassword) {
+      throw new ApiError(
+        "New password must be different from the old password",
+        400
+      );
+    }
+
+    const hashedPassword = await hashPassword(body.newPassword);
+
+    await this.prisma.user.update({
+      where: { id: authUserId },
+      data: { password: hashedPassword },
+    });
+
+    return { message: "Password updated successfully" };
   };
 }

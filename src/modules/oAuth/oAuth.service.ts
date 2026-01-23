@@ -1,4 +1,4 @@
-import { addHours } from "date-fns";
+
 import { PrismaClient, Role } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
@@ -37,7 +37,7 @@ export class OAuthService {
     };
   };
 
-  googleLogin = async (googleToken: string, role: Role) => {
+  googleLogin = async (googleToken: string) => {
     //console.log("googleLogin called with token:", googleToken, "role:", role);
 
     const googleUser = await this.verifyGoogleToken(googleToken);
@@ -48,13 +48,6 @@ export class OAuthService {
     });
     console.log("User found:", user);
 
-    if (user && role && user.role !== role) {
-      throw new ApiError(
-        `This email is already registered as ${user.role}`,
-        403
-      );
-    }
-
     if (!user) {
       user = await this.prisma.user.create({
         data: {
@@ -63,7 +56,6 @@ export class OAuthService {
           lastName: googleUser.lastName ?? "",
           imageUrl: googleUser.imageurl,
           provider: "GOOGLE",
-          role,
           isVerified: true,
         },
       });
@@ -73,7 +65,6 @@ export class OAuthService {
     const accessToken = jwt.sign(JWTpayload, process.env.JWT_ACCESS_SECRET!, {
       expiresIn: "1h",
     });
-    console.log("JWT token generated:", accessToken);
 
     const response = {
       accessToken,
