@@ -27,8 +27,8 @@ export class PropertyRouter {
     this.router.get("/:id", this.propertyController.getPropertyById);
     this.router.post(
       "/", this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!), this.roleMiddleware.requireRoles("TENANT"), this.propertyController.createProperty);
-    this.router.patch("/update/:id", this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!), this.roleMiddleware.requireRoles("TENANT"), this.roleMiddleware.requirePropertyOwnership, this.propertyController.updateProperty);
-    this.router.patch("/delete/:id", this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!), this.roleMiddleware.requireRoles("TENANT"), this.roleMiddleware.requirePropertyOwnership, this.propertyController.deleteProperty);
+    this.router.patch("/:id", this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!), this.roleMiddleware.requireRoles("TENANT"), this.roleMiddleware.requirePropertyOwnership, this.propertyController.updateProperty);
+    this.router.delete("/:id", this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!), this.roleMiddleware.requireRoles("TENANT"), this.roleMiddleware.requirePropertyOwnership, this.propertyController.deleteProperty);
   };
   getRouter = () => {
     return this.router;
