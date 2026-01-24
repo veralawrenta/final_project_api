@@ -102,6 +102,30 @@ export class PropertyService {
   ) => {
     const property = await this.prisma.property.findFirst({
       where: { id, deletedAt: null },
+      include: {
+        propertyImages: true,
+        tenant: true,
+        rooms: {
+          where: {
+            deletedAt: null,
+          },
+          include: {
+            transactions: {
+              where: {
+                status: {
+                  in: [
+                    "WAITING_FOR_PAYMENT",
+                    "WAITING_FOR_CONFIRMATION",
+                    "CONFIRMED",
+                  ],
+                },
+              },
+            },
+            roomNonAvailability: true,
+            seasonalRates: true,
+          },
+        },
+      },
     });
     if (!property) {
       throw new ApiError("Property not found", 400);
@@ -111,19 +135,36 @@ export class PropertyService {
       throw new ApiError("Tenant is unauthorized", 403);
     }
 
+    const hasActiveTransactions = property.rooms.find(
+      (room) => room.transactions.length > 0
+    );
+    if (hasActiveTransactions) {
+      if (
+        body.cityId !== undefined ||
+        body.address !== undefined ||
+        body.latitude !== undefined ||
+        body.longitude !== undefined
+      ) {
+        throw new ApiError(
+          "Cannot change location or property type while active bookings exist",
+          400
+        );
+      };
+    };
+
     const propertyData: any = {};
 
-    if (body.name !== undefined) propertyData.name === body.name;
+    if (body.name !== undefined) propertyData.name = body.name;
     if (body.description !== undefined)
-      propertyData.description !== body.description;
-    if (body.address !== undefined) propertyData.address === body.description;
-    if (body.cityId !== undefined) propertyData.cityId === body.cityId;
+      propertyData.description = body.description;
+    if (body.address !== undefined) propertyData.address = body.description;
+    if (body.cityId !== undefined) propertyData.cityId = body.cityId;
     if (body.categoryId !== undefined)
-      propertyData.categoryId !== body.categoryId;
+      propertyData.categoryId = body.categoryId;
     if (body.propertyType !== undefined)
-      propertyData.propertyData !== body.propertyType;
-    if (body.latitude !== undefined) propertyData.latitude === body.latitude;
-    if (body.longitude !== undefined) propertyData.longitude === body.longitude;
+      propertyData.propertyData = body.propertyType;
+    if (body.latitude !== undefined) propertyData.latitude = body.latitude;
+    if (body.longitude !== undefined) propertyData.longitude = body.longitude;
 
     const updatedProperty = await this.prisma.property.update({
       where: { id },
@@ -135,18 +176,85 @@ export class PropertyService {
   deletePropertyById = async (id: number, tenantId: number) => {
     const property = await this.prisma.property.findFirst({
       where: { id, deletedAt: null },
+      include: {
+        rooms: {
+          where: { deletedAt: null },
+          include: {
+            transactions: {
+              where: {
+                deletedAt: null,
+                status: {
+                  in: [
+                    "WAITING_FOR_PAYMENT",
+                    "WAITING_FOR_CONFIRMATION",
+                    "CONFIRMED",
+                  ],
+                },
+              },
+            },
+            seasonalRates: true,
+            roomImages: true,
+            roomNonAvailability: {
+              where: { deletedAt: null },
+            },
+          },
+        },
+      },
     });
     if (!property) {
       throw new ApiError("Property not found", 400);
     };
-    if (property.tenantId !== tenantId) { throw new ApiError ("Unauthorized", 400)};
+    if (property.tenantId !== tenantId) {
+      throw new ApiError("Forbidden", 403);
+    };
 
-    const deletedProperty = await this.prisma.property.update({
+    const roomWithActiveBooking = property.rooms.find(
+      (room) => room.transactions.length > 0
+    );
+    if (roomWithActiveBooking) {
+      throw new ApiError(
+        "Cannot delete property with active or upcoming bookings",
+        400
+      );
+    };
+
+    const roomWithActiveMaintenance = property.rooms.find(
+      (room) => room.roomNonAvailability.length > 0
+    );
+    if (roomWithActiveMaintenance) {
+      throw new ApiError(
+        "Cannot delete property with active or upcoming maintenance schedule",
+        400
+      );
+    }
+    const deletedProperty = await this.prisma.$transaction([
+      this.prisma.property.update({
         where: { id },
         data: {
-            deletedAt: new Date(),
+          deletedAt: new Date(),
         },
-    });
+      }),
+      this.prisma.propertyImage.updateMany({
+        where: { propertyId: id },
+        data: { deletedAt: new Date() },
+      }),
+      this.prisma.room.updateMany({
+        where: { propertyId: id },
+        data: { deletedAt: new Date() },
+      }),
+      this.prisma.roomImage.updateMany({
+        where: { room: { propertyId: id } },
+        data: { deletedAt: new Date() },
+      }),
+      this.prisma.seasonalRate.updateMany({
+        where: { propertyId: id },
+        data: { deletedAt: new Date() },
+      }),
+      this.prisma.roomNonAvailability.updateMany({
+        where: { room: { propertyId: id } },
+        data: { deletedAt: new Date() },
+      }),
+    ]);
     return deletedProperty;
   };
 }

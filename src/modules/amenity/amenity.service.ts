@@ -63,7 +63,7 @@ export class AmenityService {
     if (!amenity) throw new ApiError("Amenity not found", 404);
 
     if (amenity.property.tenantId !== tenantId) {
-      throw new ApiError("Unauthorized", 403);
+      throw new ApiError("Forbidden", 403);
     }
     const updatedAmenity = await this.prisma.amenity.update({
       where: { id },
@@ -83,7 +83,7 @@ export class AmenityService {
       if (!amenity) throw new ApiError("Amenity not found", 404);
   
       if (amenity.property.tenantId !== tenantId) {
-        throw new ApiError("Unauthorized", 403);
+        throw new ApiError("Forbidden", 403);
       };
       const deletedAmenity = await this.prisma.amenity.update({
         where: { id },

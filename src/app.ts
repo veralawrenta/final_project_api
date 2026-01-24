@@ -10,6 +10,9 @@ import { CityRouter } from "./modules/city/city.router";
 import { OAuthRouter } from "./modules/oAuth/oAuth.router";
 import { PropertyRouter } from "./modules/property/property.router";
 import { UserRouter } from "./modules/user/user.router";
+import { RoomNonAvailabilityRouter } from "./modules/roomNonAvailability/roomNonAvailability.router";
+import { PropertyImagesRouter } from "./modules/propertyImage/propertyImage.router";
+import { RoomImageRouter } from "./modules/roomImage/roomImage.router";
 
 export class App {
   app: Express;
@@ -34,6 +37,9 @@ export class App {
     const propertyRouter = new PropertyRouter()
     const cityRouter = new CityRouter();
     const amenityRouter = new AmenityRouter();
+    const roomNonAvailabilityRouter = new RoomNonAvailabilityRouter();
+    const propertyImagesRouter = new PropertyImagesRouter();
+    const roomImageRouter = new RoomImageRouter();
 
     //this.app.use("/samples", sampleRouter.getRouter());
     this.app.use("/auth", authRouter.getRouter())
@@ -42,6 +48,9 @@ export class App {
     this.app.use("/property", propertyRouter.getRouter())
     this.app.use("/city", cityRouter.getRouter())
     this.app.use("/amenity", amenityRouter.getRouter())
+    this.app.use("/room-non-availability", roomNonAvailabilityRouter.getRouter())
+    this.app.use("/property-images", propertyImagesRouter.getRouter());
+    this.app.use("/room-image", roomImageRouter.getRouter())
   }
 
   private handleError() {
