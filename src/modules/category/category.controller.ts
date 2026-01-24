@@ -14,7 +14,7 @@ export class CategoryController {
   getAllCategoriesByTenant = async (req: Request, res: Response) => {
     const tenantId = Number(res.locals.user.tenant.id);
     if (!tenantId) {
-      throw new ApiError("Unauthorized", 403);
+      throw new ApiError("Forbidden", 403);
     }
     const result = await this.categoryService.getAllCategoriesByTenant(
       tenantId
@@ -26,7 +26,7 @@ export class CategoryController {
     const tenantId = Number(res.locals.user.tenant.id);
     const id = Number(req.params.id);
     if (!tenantId) {
-      throw new ApiError("Unauthorized", 403);
+      throw new ApiError("Forbidden", 403);
     }
     const result = await this.categoryService.getCategoryById(
       id,
@@ -38,7 +38,7 @@ export class CategoryController {
   createCategory = async (req: Request, res: Response) => {
     const tenantId = Number(res.locals.user.tenant.id);
     if (!tenantId) {
-      throw new ApiError("Unauthorized", 403);
+      throw new ApiError("Forbidden", 403);
     }
     const data = plainToInstance(CreateCategoryDTO, req.body);
     const result = await this.categoryService.createCategory(tenantId, data);

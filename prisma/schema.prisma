@@ -62,7 +62,7 @@ model User {
   password String?
 
   address  String?
-  imageUrl String?
+  avatar String?
   aboutMe  String? @db.Text
   phone    String?
 
@@ -87,13 +87,13 @@ model Tenant {
   id         Int     @id @default(autoincrement())
   tenantName String?
 
-  imageUrl String?
+  avatar String?
 
   userId Int  @unique
   user   User @relation(fields: [userId], references: [id])
 
-  bankName   String
-  bankNumber String
+  bankName   String?
+  bankNumber String?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -174,7 +174,7 @@ model PropertyImage {
   propertyId Int
   property   Property @relation(fields: [propertyId], references: [id])
 
-  urlImages String?
+  urlImages String
   isCover   Boolean @default(false)
 
   createdAt DateTime  @default(now())
@@ -188,7 +188,9 @@ model Room {
   id          Int    @id @default(autoincrement())
   name        String
   basePrice   Int
-  totalGuests Int?
+  totalGuests Int
+  description String @db.Text
+  totalUnit   Int
 
   propertyId Int
   property   Property @relation(fields: [propertyId], references: [id])
@@ -209,9 +211,10 @@ model Room {
 model RoomImage {
   id     Int @id @default(autoincrement())
   roomId Int
-
   room     Room    @relation(fields: [roomId], references: [id])
-  urlImage String?
+  
+  urlImage String
+  isCover   Boolean @default(false)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -230,6 +233,10 @@ model RoomNonAvailability {
   reason        String?
   roomInventory Int
 
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
   @@unique([roomId, startDate, endDate])
   @@map("roomNonAvailability")
 }
@@ -244,8 +251,10 @@ model SeasonalRate {
   roomId Int
   room   Room @relation(fields: [roomId], references: [id])
 
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  
   property   Property? @relation(fields: [propertyId], references: [id])
   propertyId Int?
 
