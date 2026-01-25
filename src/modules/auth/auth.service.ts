@@ -3,7 +3,6 @@ import jwt from "jsonwebtoken";
 import { PrismaClient, Provider, Role } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import { verifyToken } from "../../utils/jwt";
 import { comparePassword, hashPassword } from "../../utils/password";
 import { MailService } from "../mail/mail.service";
 import {
@@ -15,7 +14,6 @@ import {
   ResendVerificationDTO,
   ResetPasswordDTO,
   SetPasswordDTO,
-  VerifyEmailTokenDTO,
 } from "./dto/auth.dto";
 
 export class AuthService {
@@ -28,13 +26,12 @@ export class AuthService {
   }
 
   registerUserEmail = async (body: RegisterUserDTO) => {
+    console.log("REGISTER SERVICE INPUT:", body);
     const existingUser = await this.prisma.user.findUnique({
       where: { email: body.email },
     });
 
     if (existingUser) throw new ApiError("Email already exist", 400);
-    //const token = randomBytes(32).toString("hex");
-    //const expiresAt = addHours(new Date(), 1);
 
     const user = await this.prisma.user.create({
       data: {
@@ -51,6 +48,7 @@ export class AuthService {
       expiresIn: "1h",
     });
     const expiresAt = addHours(new Date(), 1);
+    console.log("TOKEN GENERATED");
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -59,16 +57,18 @@ export class AuthService {
         expiresAt,
       },
     });
+    console.log("TOKEN SAVED");
 
     let sendEmail = await this.mailService.sendMail(
       user.email,
       "Email Verification",
       "welcome-user",
       {
-        UserVerificationLink: `${process.env.FRONTEND_URL}/email-verification?token=${token}`,
+        UserVerificationLink: `${process.env.FRONTEND_URL}/auth/set-password?token=${token}`,
       }
     );
-    console.log("Email sent:", sendEmail);
+    console.log("EMAIL SENT");
+    return { message: "Please check your email to verify your account" };
   };
 
   registerTenantEmail = async (body: RegisterTenantDTO) => {
@@ -79,13 +79,8 @@ export class AuthService {
       throw new ApiError("email already exist", 400);
     }
 
-    //const token = randomBytes(32).toString("hex");
-    //const expiresAt = addHours(new Date(), 1);
-
     const user = await this.prisma.user.create({
       data: {
-        firstName: body.firstName,
-        lastName: body.lastName,
         email: body.email,
         role: Role.TENANT,
         provider: Provider.CREDENTIAL,
@@ -93,8 +88,6 @@ export class AuthService {
         tenant: {
           create: {
             tenantName: body.tenantName,
-            bankName: body.bankName,
-            bankNumber: body.bankNumber,
           },
         },
       },
@@ -119,38 +112,25 @@ export class AuthService {
       "Verify Email",
       "welcome-tenant",
       {
-        TenantVerificationLink: `${process.env.FRONTEND_URL}/auth/verify?token=${token}`,
+        TenantVerificationLink: `${process.env.FRONTEND_URL}/auth/set-password?token=${token}`,
       }
     );
     console.log({ message: "email sent successful", sendEmail });
     return { message: "Please check your email to verify your account" };
   };
 
-  validateEmailToken = async (body: VerifyEmailTokenDTO) => {
+  validateEmailToken = async (userId: number, verificationToken: string) => {
     const user = await this.prisma.user.findFirst({
-      where: { verificationToken: body.token },
+      where: { id: userId, verificationToken },
     });
     if (!user) {
       throw new ApiError("User not found", 400);
     }
-
     if (user.isVerified) {
       throw new ApiError("User already verified", 400);
     }
     if (user.expiresAt! < new Date()) {
       throw new ApiError("Token has expired", 400);
-    }
-    if (user.verificationToken !== body.token) {
-      throw new ApiError("Invalid token", 400);
-    }
-
-    const decodedToken = verifyToken(
-      body.token,
-      process.env.JWT_VERIFY_SECRET!
-    ) as { id: number; role: Role };
-
-    if (!decodedToken || decodedToken.id !== user.id) {
-      throw new ApiError("Invalid token", 400);
     }
 
     return {
@@ -161,16 +141,17 @@ export class AuthService {
     };
   };
 
-  verifyAndSetPassword = async (body: SetPasswordDTO) => {
-    const { token, password } = body;
-
-    if (!password) {
-      //console.log("Password is null");
+  verifyAndSetPassword = async (
+    userId: number,
+    verificationToken: string,
+    body: SetPasswordDTO
+  ) => {
+    if (!body.password) {
       throw new ApiError("Password is required", 400);
     }
 
     const currentUser = await this.prisma.user.findFirst({
-      where: { verificationToken: token },
+      where: { id: userId, verificationToken },
     });
 
     if (!currentUser) {
@@ -190,14 +171,6 @@ export class AuthService {
         "Password already set. Please use forgot password to reset your password",
         400
       );
-    }
-
-    const decodedToken = verifyToken(token, process.env.JWT_VERIFY_SECRET!) as {
-      id: number;
-      role: Role;
-    };
-    if (!decodedToken || decodedToken.id !== currentUser.id) {
-      throw new ApiError(" Invalid token", 400);
     }
 
     const hashedPassword = await hashPassword(body.password);
@@ -290,35 +263,24 @@ export class AuthService {
       "Forgot Password",
       "forgot-password",
       {
-        ResetPasswordLink: `http://localhost:3000/auth/reset-password?token=${accessToken}`,
+        ResetPasswordLink: `http://localhost:3000/auth/reset-password/${accessToken}`,
       }
     );
 
     return { message: "send email success" };
   };
 
-  resetPassword = async (body: ResetPasswordDTO, verificationToken: string) => {
-    let decoded: any;
-
-    try {
-      decoded = jwt.verify(verificationToken, process.env.JWT_RESET!);
-    } catch (error) {
-      throw new ApiError("Invalid or expired reset token", 400);
-    }
-
+  resetPassword = async (
+    authUserId: number,
+    verificationToken: string,
+    body: ResetPasswordDTO
+  ) => {
     const user = await this.prisma.user.findFirst({
-      where: { id: decoded.id },
+      where: { id: authUserId, verificationToken },
     });
 
     if (!user) {
       throw new ApiError("Invalid or outdated reset link", 404);
-    }
-
-    if (user.verificationToken !== verificationToken) {
-      throw new ApiError(
-        "This reset link has been replaced by a newer one",
-        400
-      );
     }
 
     if (!user.expiresAt || user.expiresAt < new Date()) {
@@ -354,14 +316,14 @@ export class AuthService {
       throw new ApiError("user not found", 404);
     }
 
-    if (user.provider !== Provider.CREDENTIAL) {
+    if (user.provider === Provider.GOOGLE) {
       throw new ApiError(
         "Your account is registered with Google, please login with Google",
         400
       );
     }
 
-    if (user.isVerified) {
+    if (user.isVerified === true) {
       throw new ApiError("user already verified", 400);
     }
 
@@ -381,9 +343,9 @@ export class AuthService {
     await this.mailService.sendMail(
       user.email,
       "Email Verification",
-      "welcome",
+      "resend-verification",
       {
-        ResendVerificationLink: `${process.env.FRONTEND_URL}/auth/setpassword?token=${token}`,
+        ResendVerificationLink: `${process.env.FRONTEND_URL}/auth/set-password?token=${token}`,
       }
     );
     return { message: "Please check your email to verify your account" };
@@ -416,7 +378,7 @@ export class AuthService {
     if (currentEmail) throw new ApiError("Email already exists", 400);
 
     const payload = { id: user.id, email: user.email, role: user.role };
-    const token = jwt.sign(payload, process.env.JWT_VERIFY_SECRET!, {
+    const token = jwt.sign(payload, process.env.JWT_CHANGE_EMAIL_SECRET!, {
       expiresIn: "1h",
     });
     const expiresAt = addHours(new Date(), 1);
@@ -443,9 +405,9 @@ export class AuthService {
     return { message: "Please check your new email to verify your account" };
   };
 
-  verifyChangeEmail = async (verificationToken: string) => {
+  verifyChangeEmail = async (authUserId: number, verificationToken: string) => {
     const user = await this.prisma.user.findUnique({
-      where: { verificationToken },
+      where: { id: authUserId, verificationToken },
     });
     if (!user) {
       throw new ApiError("User not found", 404);
@@ -455,18 +417,11 @@ export class AuthService {
       throw new ApiError("Token expired", 400);
     }
 
-    const decodedToken = jwt.verify(
-      verificationToken,
-      process.env.JWT_VERIFY_SECRET!
-    ) as {
-      id: number;
-    };
-
-    if (decodedToken.id !== user.id) {
-      throw new ApiError("Invalid token", 400);
+    if (!user.pendingEmail) {
+      throw new ApiError("No email change request found", 400);
     }
     await this.prisma.user.update({
-      where: { id: user.id },
+      where: { id: authUserId },
       data: {
         email: user.pendingEmail!,
         pendingEmail: null,
@@ -477,6 +432,46 @@ export class AuthService {
     });
 
     return { message: "Email changed and verified successfully" };
+  };
+
+  resendChangeEmailVerification = async (authUserId: number) => {
+    const user = await this.prisma.user.findFirst({
+      where: { id: authUserId },
+    });
+    if (!user) {
+      throw new ApiError("user not found", 404);
+    };
+
+    if (!user.pendingEmail) {
+      throw new ApiError("No pending email change request", 400);
+    }
+
+    if (user.isVerified === true) {
+      throw new ApiError("user already verified", 400);
+    };
+
+    const payload = { id: user.id, role: user.role };
+    const token = jwt.sign(payload, process.env.JWT_CHANGE_EMAIL_SECRET!, {
+      expiresIn: "1h",
+    });
+    const expiresAt = addHours(new Date(), 1);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        verificationToken: token,
+        expiresAt,
+      },
+    });
+    await this.mailService.sendMail(
+      user.pendingEmail,
+      "Email Verification",
+      "resend-verification",
+      {
+        ResendChangeVerificationLink: `${process.env.FRONTEND_URL}/auth/verify-email-change?token=${token}`,
+      }
+    );
+    return { message: "Please check your email to verify your account" };
   };
 
   changePassword = async (authUserId: number, body: ChangePasswordDTO) => {

@@ -9,41 +9,15 @@ export class RegisterUserDTO {
 
 export class RegisterTenantDTO {
   @IsNotEmpty()
-  @IsString()
-  firstName!: string;
-
-  @IsNotEmpty()
-  @IsString()
-  lastName!: string;
-
-  @IsNotEmpty()
   @IsEmail({}, {message: "Invalid email format"})
   email!: string;
 
   @IsNotEmpty()
   @IsString()
   tenantName!: string;
-
-  @IsNotEmpty()
-  @IsString()
-  bankName!: string;
-
-  @IsNotEmpty()
-  @IsString()
-  @Matches(/^\d+$/, { message: "Bank account number must contain only digits" })
-  bankNumber!: string;
 }
 
-export class VerifyEmailTokenDTO {
-  @IsNotEmpty()
-  @IsString()
-  token!: string;
-}
 export class SetPasswordDTO {
-  @IsNotEmpty()
-  @IsString()
-  token!: string;
-  
   @IsNotEmpty()
   @IsString()
   @MinLength(8, {message: "Password must be at least 8 characters long"})
@@ -98,6 +72,4 @@ export class ChangePasswordDTO {
   @IsNotEmpty()
   @MinLength(8, {message: "Password must be at least 8 characters long"})
   newPassword!: string;
-}
-
-
+};

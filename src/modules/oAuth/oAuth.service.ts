@@ -27,7 +27,7 @@ export class OAuthService {
     if (!payload) {
       throw new ApiError("Invalid Google token", 401);
     }
-    //console.log("Google token payload:", payload);
+    console.log("Google token payload:", payload);
     return {
       email: payload.email!,
       firstName: payload.given_name || "no name",
@@ -38,7 +38,7 @@ export class OAuthService {
   };
 
   googleLogin = async (googleToken: string) => {
-    //console.log("googleLogin called with token:", googleToken, "role:", role);
+    console.log("googleLogin called with token:", googleToken);
 
     const googleUser = await this.verifyGoogleToken(googleToken);
     console.log("Google user verified:", googleUser);
@@ -54,7 +54,7 @@ export class OAuthService {
           email: googleUser.email,
           firstName: googleUser.firstName ?? "",
           lastName: googleUser.lastName ?? "",
-          imageUrl: googleUser.imageurl,
+          avatar: googleUser.imageurl,
           provider: "GOOGLE",
           isVerified: true,
         },
@@ -72,7 +72,7 @@ export class OAuthService {
         id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
-        imageUrl: user.imageUrl,
+        avatar: user.avatar,
         email: user.email,
         password: null,
         role: user.role,

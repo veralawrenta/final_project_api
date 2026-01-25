@@ -5,7 +5,8 @@ import { ApiError } from "../utils/api-error";
 export class JWTMiddleware {
   verifyToken = (secretKey: string) => {
     return (req: Request, res: Response, next: NextFunction) => {
-      const token = req.headers.authorization?.split(" ")[1] || (req.query.token as string);
+      const token =
+        req.headers.authorization?.split(" ")[1] || (req.query.token as string);
 
       if (!token) {
         throw new ApiError("No token provided, authorization denied", 401);

@@ -1,3 +1,4 @@
+import { auth } from "googleapis/build/src/apis/abusiveexperiencereport";
 import { PrismaClient, Role } from "../../../generated/prisma/client";
 import { CloudinaryService } from "../../cloudinary/cloudinary.service";
 import { prisma } from "../../lib/prisma";
@@ -29,29 +30,28 @@ export class UserService {
     return user;
   };
 
-  uploadImageUrl = async (id: number, imageUrl: Express.Multer.File) => {
+  uploadAvatar = async (authUserId: number, avatar: Express.Multer.File) => {
     const user = await this.prisma.user.findUnique({
-      where: { id },
+      where: { id: authUserId },
     });
     if (!user) {
       throw new ApiError("User not found", 404);
     }
-    if (user.isVerified === false) {
+    if (!user.isVerified) {
       throw new ApiError("Please verify your account first", 400);
     }
-    const { secure_url } = await this.cloudinaryService.upload(imageUrl);
+    const { secure_url } = await this.cloudinaryService.upload(avatar);
 
     await this.prisma.user.update({
-      where: { id },
-      data: { imageUrl: "secure_url" },
+      where: { id: authUserId },
+      data: { avatar: secure_url },
     });
-    console.log("Uploaded image for user ID:", id);
-    return { message: "Image uploaded successfully", imageUrl: secure_url };
+    return { message: "Image uploaded successfully", avatar: secure_url };
   };
 
-  updateDataUser = async (body: Partial<UpdateDataUserDTO>) => {
+  updateDataUser = async (authUserId: number, body: Partial<UpdateDataUserDTO>) => {
     const user = await this.prisma.user.findUnique({
-      where: { id: body.id },
+      where: { id: authUserId },
     });
 
     if (!user) {
@@ -62,7 +62,7 @@ export class UserService {
       throw new ApiError("User role is mismatch", 400);
     }
 
-    if (user.isVerified === false) {
+    if (!user.isVerified) {
       throw new ApiError("Please verify your account first", 400);
     }
 
@@ -75,15 +75,14 @@ export class UserService {
     if (body.aboutMe !== undefined) data.aboutMe = body.aboutMe;
 
     const updatedUser = await this.prisma.user.update({
-      where: { id: body.id },
+      where: { id: authUserId },
       data,
     });
-    console.log("Updated user:", updatedUser);
     return updatedUser;
   };
-  updateDataTenant = async (body: Partial<UpdateDataTenantDTO>) => {
+  updateDataTenant = async (authUserId: number, body: Partial<UpdateDataTenantDTO>) => {
     const tenant = await this.prisma.user.findUnique({
-      where: { id: body.id },
+      where: { id: authUserId },
       include: { tenant: true },
     });
 
@@ -112,7 +111,7 @@ export class UserService {
     if (body.bankNumber !== undefined) tenantData.bankNumber = body.bankNumber;
 
     const updatedUser = await this.prisma.user.update({
-      where: { id: body.id },
+      where: { id: authUserId },
       data: {
         ...userData,
         tenant: Object.keys(tenantData).length
@@ -125,15 +124,18 @@ export class UserService {
     return updatedUser;
   };
 
-  deleteUser = async (id: number) => {
+  deleteUser = async (authUserId: number) => {
     const user = await this.prisma.user.findUnique({
-      where: { id },
+      where: { id: authUserId},
     });
     if (!user) {
       throw new ApiError("User not found", 404);
     }
-    const deletedUser = await this.prisma.user.delete({
-      where: { id },
+    const deletedUser = await this.prisma.user.update({
+      where: { id: authUserId },
+      data: {
+        deletedAt: new Date(),
+      }
     });
     console.log("Deleted user:", deletedUser);
     return deletedUser;
@@ -151,7 +153,7 @@ export class UserService {
         phone: true,
         address: true,
         aboutMe: true,
-        imageUrl: true,
+        avatar: true,
         isVerified: true,
         tenant: {
           select: {

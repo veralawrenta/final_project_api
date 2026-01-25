@@ -17,19 +17,19 @@ export class MailService {
   }
 
   renderTemplate = async (templateName: string, context: any) => {
-    const templateDir = path.resolve(__dirname, "./templates");
-    
     const templatePath = path.join(
-      //process.cwd(),
-      //"src",
-      //"modules",
-      //"mail",
-      //"templates",
-      templateDir, `${templateName}.hbs`);
+      process.cwd(),
+      "src",
+      "modules",
+      "mail",
+      "templates",
+      `${templateName}.hbs`
+    );
+  
     const templateSource = await fs.readFile(templatePath, "utf-8");
     const compiledTemplate = handlebars.compile(templateSource);
     return compiledTemplate(context);
-  };
+  }
 
   sendMail = async (
     to: string,
@@ -38,10 +38,11 @@ export class MailService {
     context: any
   ) => {
     const html = await this.renderTemplate(templateName, context);
-    await this.transporter.sendMail({
+   const info = await this.transporter.sendMail({
       to,
       subject,
       html,
     });
+    return info;
   };
 }

@@ -3,6 +3,7 @@ import { UserService } from "./user.service";
 import { plainToInstance } from "class-transformer";
 import { UpdateDataTenantDTO, UpdateDataUserDTO } from "./dto/user-dto";
 import { ApiError } from "../../utils/api-error";
+import { auth } from "googleapis/build/src/apis/abusiveexperiencereport";
 
 export class UserController {
   userService: UserService;
@@ -22,34 +23,34 @@ export class UserController {
     return res.status(200).send(result);
   };
 
-  uploadImageUrl = async (req: Request, res: Response) => {
-    const id = Number(req.params.id);
+  uploadAvatar = async (req: Request, res: Response) => {
+    const authUserId = Number(res.locals.user.id);
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    const imageUrl = files.imageUrl?.[0];
-    if (!imageUrl) {
-      return res.status(400).send({ message: "No image file provided" });
+    const avatar = files.avatar?.[0];
+    if (!avatar) {
+      return res.status(400).send({ message: "No avatar image file provided" });
     }
-    const result = await this.userService.uploadImageUrl(id, imageUrl);
+    const result = await this.userService.uploadAvatar(authUserId, avatar);
     return res.status(200).send(result);
   };
 
   updateDataUser = async (req: Request, res: Response) => {
-    const id = res.locals.user.id;
-    const data = plainToInstance(UpdateDataUserDTO, { ...req.body, id });
-    const result = await this.userService.updateDataUser(data);
+    const authUserId = Number(res.locals.user.id);
+    const data = plainToInstance(UpdateDataUserDTO, { ...req.body });
+    const result = await this.userService.updateDataUser(authUserId, data);
     return res.status(200).send(result);
   };
 
   updateDataTenant = async (req: Request, res: Response) => {
-    const id = res.locals.user.id;
-    const data = plainToInstance(UpdateDataTenantDTO, { ...req.body, id });
-    const result = await this.userService.updateDataTenant(data);
+    const authUserId = Number(res.locals.user.id);
+    const data = plainToInstance(UpdateDataTenantDTO, { ...req.body });
+    const result = await this.userService.updateDataTenant(authUserId, data);
     return res.status(200).send(result);
   };
 
   deleteUser = async (req: Request, res: Response) => {
-    const id = res.locals.user.id;
-    const result = await this.userService.deleteUser(id);
+    const authUserId = Number(res.locals.user.id);
+    const result = await this.userService.deleteUser(authUserId);
     return res.status(200).send(result);
   };
 
