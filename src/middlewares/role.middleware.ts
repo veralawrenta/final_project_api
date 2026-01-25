@@ -6,15 +6,12 @@ import { prisma } from "../lib/prisma";
 export class RoleMiddleware {
   requireRoles = (...allowedRoles: Role[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
-      const user = res.locals.user;
+      const userRole = res.locals.user.role;
 
-      if (!user || !user.role) {
+
+      if (!userRole || !allowedRoles.includes(userRole)) {
         throw new ApiError("Unauthorized", 401);
-      }
-
-      if (!allowedRoles.includes(user.role)) {
-        throw new ApiError("Forbidden: insufficient role", 403);
-      }
+      };
 
       next();
     };

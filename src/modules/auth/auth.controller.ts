@@ -9,7 +9,6 @@ import {
   RegisterUserDTO,
   ResetPasswordDTO,
   SetPasswordDTO,
-  VerifyEmailTokenDTO
 } from "./dto/auth.dto";
 
 export class AuthController {
@@ -20,6 +19,7 @@ export class AuthController {
   }
 
   registerUserEmail = async (req: Request, res: Response) => {
+    console.log("RAW BODY:", req.body);
     const data = plainToInstance(RegisterUserDTO, req.body);
     const result = await this.authService.registerUserEmail(data);
     res.status(201).send(result);
@@ -32,14 +32,24 @@ export class AuthController {
   };
 
   validateEmailToken = async (req: Request, res: Response) => {
-    const data = plainToInstance(VerifyEmailTokenDTO, req.body);
-    const result = await this.authService.validateEmailToken(data);
+    const userId = res.locals.user.id;
+    const verificationToken = req.headers.authorization!.split(" ")[1];
+    const result = await this.authService.validateEmailToken(
+      userId,
+      verificationToken
+    );
     res.status(200).send(result);
   };
 
   verifyAndSetPassword = async (req: Request, res: Response) => {
+    const userId = res.locals.user.id;
+    const verificationToken = req.headers.authorization!.split(" ")[1];
     const data = plainToInstance(SetPasswordDTO, req.body);
-    const result = await this.authService.verifyAndSetPassword(data);
+    const result = await this.authService.verifyAndSetPassword(
+      userId,
+      verificationToken,
+      data
+    );
     res.status(201).send(result);
   };
 
@@ -56,13 +66,18 @@ export class AuthController {
   };
 
   resetPassword = async (req: Request, res: Response) => {
-    const verificationToken = req.query.token as string;
+    console.log("AUTH USER FROM JWT:", res.locals.user);
+    console.log("TOKEN FROM HEADER:", req.headers.authorization);
+
+    const authUserId = res.locals.user.id;
+    const verificationToken = req.headers.authorization!.split(" ")[1];
     const data = plainToInstance(ResetPasswordDTO, req.body);
     const result = await this.authService.resetPassword(
-      data,
-      verificationToken
+      authUserId,
+      verificationToken,
+      data
     );
-    return res.status(201).send(result);
+    return res.status(200).send(result);
   };
 
   resendVerificationEmail = async (req: Request, res: Response) => {
@@ -79,21 +94,22 @@ export class AuthController {
   };
 
   verifyChangeEmail = async (req: Request, res: Response) => {
-    const token = req.query.token as string;
-    if (!token) {
-      throw new ApiError("Verification token is required", 400);
-    }
-    const result = await this.authService.verifyChangeEmail(token);
-    return res.status(200).json(result);
+    const authUserId = res.locals.user.id;
+    const token = req.headers.authorization!.split(" ")[1];
+    const result = await this.authService.verifyChangeEmail(authUserId, token);
+    return res.status(200).send(result);
+  };
+
+  resendChangeEmailVerification = async (req: Request, res: Response) => {
+    const authUserId = Number(res.locals.user.id);
+    const result = await this.authService.resendChangeEmailVerification(authUserId);
+    return res.status(200).send(result);
   };
 
   changePassword = async (req: Request, res: Response) => {
     const authUserId = Number(res.locals.user.id);
     const data = plainToInstance(ChangePasswordDTO, req.body);
-    const result = await this.authService.changePassword(
-      authUserId,
-      data
-    );
+    const result = await this.authService.changePassword(authUserId, data);
     return res.status(200).json(result);
   };
 }

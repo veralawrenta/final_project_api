@@ -1,10 +1,6 @@
 import { IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 
-export class UpdateDataUserDTO {
-    @IsNotEmpty()
-    @IsNumber()
-    id!: number;
-    
+export class UpdateDataUserDTO { 
     @IsOptional()
     @IsString()
     firstName?: string;
@@ -27,10 +23,6 @@ export class UpdateDataUserDTO {
 }
 
 export class UpdateDataTenantDTO {
-    @IsNotEmpty()
-    @IsNumber()
-    id!: number;
-    
     @IsOptional()
     @IsString()
     firstName?: string;

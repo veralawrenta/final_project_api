@@ -12,7 +12,7 @@ export class OAuthRouter {
     }
   
     private initializedRoutes = () => {
-      this.router.post("/google/login", this.oAuthController.googleLogin);
+      this.router.post("/google", this.oAuthController.googleLogin);
     };
     
     getRouter = () => {
