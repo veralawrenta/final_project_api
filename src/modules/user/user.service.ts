@@ -19,17 +19,6 @@ export class UserService {
     return users;
   };
 
-  getUserById = async (id: number) => {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-    });
-    if (!user) {
-      throw new ApiError("User not found", 404);
-    }
-    console.log("Fetched user:", user);
-    return user;
-  };
-
   uploadAvatar = async (authUserId: number, avatar: Express.Multer.File) => {
     const user = await this.prisma.user.findUnique({
       where: { id: authUserId },
@@ -169,7 +158,7 @@ export class UserService {
     if (!user) {
       throw new ApiError("User not found", 404);
     };
-  
+   
     return user;
   };
 }
