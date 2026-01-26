@@ -22,7 +22,6 @@ export class UserRouter {
 
   private initializedRoutes = () => {
     this.router.get("/", this.userController.getAllUsers);
-    this.router.get("/:id", this.userController.getUserById);
     this.router.post(
       "/me/avatar",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),

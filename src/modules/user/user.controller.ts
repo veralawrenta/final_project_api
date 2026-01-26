@@ -1,9 +1,8 @@
-import { Request, Response } from "express";
-import { UserService } from "./user.service";
 import { plainToInstance } from "class-transformer";
-import { UpdateDataTenantDTO, UpdateDataUserDTO } from "./dto/user-dto";
+import { Request, Response } from "express";
 import { ApiError } from "../../utils/api-error";
-import { auth } from "googleapis/build/src/apis/abusiveexperiencereport";
+import { UpdateDataTenantDTO, UpdateDataUserDTO } from "./dto/user-dto";
+import { UserService } from "./user.service";
 
 export class UserController {
   userService: UserService;
@@ -14,12 +13,6 @@ export class UserController {
 
   getAllUsers = async (req: Request, res: Response) => {
     const result = await this.userService.getAllUsers();
-    return res.status(200).send(result);
-  };
-
-  getUserById = async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id);
-    const result = await this.userService.getUserById(id);
     return res.status(200).send(result);
   };
 
@@ -55,10 +48,12 @@ export class UserController {
   };
 
   getMeProfile = async (req: Request, res: Response) => {
-    const authUserId = res.locals.user.id; 
-    const result = await this.userService.getMyProfile(authUserId);
-    return res.status(200).send(result);
+      console.log("JWT USER:", res.locals.user);
+      const authUserId = res.locals.user.id;
+      if (!authUserId) {
+        throw new ApiError("User ID not found in token", 401);
+      }
+      const result = await this.userService.getMyProfile(authUserId);
+      return res.status(200).send(result);
   };
-  
-  
 }
