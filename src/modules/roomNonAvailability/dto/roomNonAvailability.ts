@@ -1,19 +1,20 @@
 import {
-  IsDateString,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   Min,
 } from "class-validator";
+import { IsDateOnly } from "../../../validators/is-date-only.validator";
+import { PaginationQueryParams } from "../../pagination/dto/pagination.dto";
 
 export class CreateRoomNonAvailabilityDTO {
   @IsNotEmpty()
-  @IsDateString()
+  @IsDateOnly()
   startDate!: string;
 
   @IsNotEmpty()
-  @IsDateString()
+  @IsDateOnly()
   endDate!: string;
 
   @IsOptional()
@@ -28,11 +29,11 @@ export class CreateRoomNonAvailabilityDTO {
 
 export class UpdateRoomNonAvailabilityDTO {
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   startDate?: string;
 
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   endDate?: string;
 
   @IsOptional()
@@ -43,4 +44,10 @@ export class UpdateRoomNonAvailabilityDTO {
   @IsNumber()
   @Min(1)
   roomInventory?: number;
+}
+
+export class GetRoomNonAvailabilitiesByTenant extends PaginationQueryParams {
+  @IsOptional()
+  @IsString()
+  search?: string ="";
 }

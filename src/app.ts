@@ -13,6 +13,9 @@ import { UserRouter } from "./modules/user/user.router";
 import { RoomNonAvailabilityRouter } from "./modules/roomNonAvailability/roomNonAvailability.router";
 import { PropertyImagesRouter } from "./modules/propertyImage/propertyImage.router";
 import { RoomImageRouter } from "./modules/roomImage/roomImage.router";
+import { SeasonalRateRouter } from "./modules/seasonalRates/seasonalRates.router";
+import { RoomRouter } from "./modules/room/room.router";
+import { CategoryRouter } from "./modules/category/category.router";
 
 export class App {
   app: Express;
@@ -37,23 +40,29 @@ export class App {
     const authRouter = new AuthRouter();
     const oAuthRouter = new OAuthRouter();
     const userRouter = new UserRouter();
-    const propertyRouter = new PropertyRouter()
+    const propertyRouter = new PropertyRouter();
+    const roomRouter = new RoomRouter();
     const cityRouter = new CityRouter();
+    const categoryRouter = new CategoryRouter();
     const amenityRouter = new AmenityRouter();
     const roomNonAvailabilityRouter = new RoomNonAvailabilityRouter();
     const propertyImagesRouter = new PropertyImagesRouter();
     const roomImageRouter = new RoomImageRouter();
+    const seasonalRateRouter = new SeasonalRateRouter();
 
     //this.app.use("/samples", sampleRouter.getRouter());
     this.app.use("/auth", authRouter.getRouter())
     this.app.use("/oauth", oAuthRouter.getRouter())
     this.app.use("/users", userRouter.getRouter())
-    this.app.use("/property", propertyRouter.getRouter())
-    this.app.use("/city", cityRouter.getRouter())
-    this.app.use("/amenity", amenityRouter.getRouter())
-    this.app.use("/room-non-availability", roomNonAvailabilityRouter.getRouter())
+    this.app.use("/properties", propertyRouter.getRouter())
+    this.app.use("/rooms", roomRouter.getRouter())
+    this.app.use("categories", categoryRouter.getRouter())
+    this.app.use("/cities", cityRouter.getRouter())
+    this.app.use("/amenities", amenityRouter.getRouter())
+    this.app.use("/rooms-non-availability", roomNonAvailabilityRouter.getRouter())
     this.app.use("/property-images", propertyImagesRouter.getRouter());
-    this.app.use("/room-image", roomImageRouter.getRouter())
+    this.app.use("/room-images", roomImageRouter.getRouter());
+    this.app.use("/seasonal-rates", seasonalRateRouter.getRouter());
   }
 
   private handleError() {

@@ -203,10 +203,9 @@ export class AuthService {
       throw new ApiError("Invalid credentials", 400);
     }
 
-    if (!user.isVerified) {
-      throw new ApiError("Not verified. Please verify your email", 400);
-    }
-
+    //if (!user.isVerified) {
+    //  throw new ApiError("Not verified. Please verify your email", 400);
+    //}
     if (user.provider !== Provider.CREDENTIAL) {
       throw new ApiError("Please sign in with Google login", 400);
     }
@@ -351,7 +350,7 @@ export class AuthService {
     return { message: "Please check your email to verify your account" };
   };
 
-  changeEmail = async (newEmail: string, authUserId: number) => {
+  changeEmail = async (authUserId: number, newEmail: string) => {
     const user = await this.prisma.user.findUnique({
       where: { id: authUserId },
     });
@@ -381,6 +380,7 @@ export class AuthService {
     const token = jwt.sign(payload, process.env.JWT_CHANGE_EMAIL_SECRET!, {
       expiresIn: "1h",
     });
+    console.log("CHANGE EMAIL SECRET:", process.env.JWT_CHANGE_EMAIL_SECRET);
     const expiresAt = addHours(new Date(), 1);
 
     const updatedUser = await this.prisma.user.update({
@@ -394,15 +394,17 @@ export class AuthService {
     });
 
     let sendEmail = await this.mailService.sendMail(
-      updatedUser.email,
-      "Email Verification",
-      "change-email-verification",
+      updatedUser.pendingEmail!,
+      "Change Email",
+      "change-email",
       {
-        ChangeEmailVerificationLink: `http://localhost:3000/email-verification?token=${token}`,
+        ChangeEmailVerificationLink: `${process.env.FRONTEND_URL}/auth/verify-email-change?token=${token}`,
       }
     );
     console.log("Email sent:", sendEmail);
-    return { message: "Please check your new email to verify your account" };
+    return {
+      message: "Please check your email to verify the new email address",
+    };
   };
 
   verifyChangeEmail = async (authUserId: number, verificationToken: string) => {
@@ -440,7 +442,7 @@ export class AuthService {
     });
     if (!user) {
       throw new ApiError("user not found", 404);
-    };
+    }
 
     if (!user.pendingEmail) {
       throw new ApiError("No pending email change request", 400);
@@ -448,7 +450,7 @@ export class AuthService {
 
     if (user.isVerified === true) {
       throw new ApiError("user already verified", 400);
-    };
+    }
 
     const payload = { id: user.id, role: user.role };
     const token = jwt.sign(payload, process.env.JWT_CHANGE_EMAIL_SECRET!, {
@@ -463,10 +465,11 @@ export class AuthService {
         expiresAt,
       },
     });
+
     await this.mailService.sendMail(
       user.pendingEmail,
-      "Email Verification",
-      "resend-verification",
+      "Resend Change Email Verification",
+      "resend-change-email",
       {
         ResendChangeVerificationLink: `${process.env.FRONTEND_URL}/auth/verify-email-change?token=${token}`,
       }

@@ -1,4 +1,5 @@
 import { IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { PaginationQueryParams } from "../../pagination/dto/pagination.dto";
 
 export class CreateRoomDTO {
     @IsNotEmpty()
@@ -19,7 +20,7 @@ export class CreateRoomDTO {
 
     @IsNotEmpty()
     @IsNumber()
-    totalUnit!: number;
+    totalUnits!: number;
 };
 
 export class UpdateRoomDTO {
@@ -35,12 +36,18 @@ export class UpdateRoomDTO {
     @IsNumber()
     totalGuests?: number;
 
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
-    description!: string;
+    description?: string;
 
     @IsOptional()
     @IsNumber()
-    totalUnit?: number;
-
+    totalUnits?: number;
 };
+
+export class GetAllRoomsDTO extends PaginationQueryParams{
+    @IsOptional()
+    @IsString()
+    search?: string ="";
+}
+

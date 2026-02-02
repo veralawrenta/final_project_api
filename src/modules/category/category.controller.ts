@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { CategoryService } from "./category.service";
 import { ApiError } from "../../utils/api-error";
 import { plainToInstance } from "class-transformer";
-import { CreateCategoryDTO, UpdateCategoryDTO } from "./dto/category.dto";
+import { CreateCategoryDTO, GetAllCategoriesDTO, UpdateCategoryDTO } from "./dto/category.dto";
 
 export class CategoryController {
   private categoryService: CategoryService;
@@ -13,11 +13,13 @@ export class CategoryController {
 
   getAllCategoriesByTenant = async (req: Request, res: Response) => {
     const tenantId = Number(res.locals.user.tenant.id);
+    const data = plainToInstance(GetAllCategoriesDTO, req.query)
     if (!tenantId) {
       throw new ApiError("Forbidden", 403);
     }
     const result = await this.categoryService.getAllCategoriesByTenant(
-      tenantId
+      tenantId,
+      data
     );
     return res.status(200).send(result);
   };

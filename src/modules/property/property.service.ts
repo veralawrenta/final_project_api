@@ -1,7 +1,11 @@
-import { PrismaClient } from "../../../generated/prisma/client";
+import { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import { CreatePropertyDTO, UpdatePropertyDTO } from "./dto/property.dto";
+import {
+  CreatePropertyDTO,
+  GetAllPropertiesDTO,
+  UpdatePropertyDTO,
+} from "./dto/property.dto";
 
 export class PropertyService {
   private prisma: PrismaClient;
@@ -10,35 +14,81 @@ export class PropertyService {
     this.prisma = prisma;
   }
 
-  getAllProperties = async () => {
-    const properties = await this.prisma.property.findMany({});
-    return properties;
+  getAllProperties = async (query: GetAllPropertiesDTO) => {
+    const { page, take, sortBy, sortOrder, search } = query;
+
+    const whereClause: Prisma.PropertyWhereInput = {};
+
+    if (search) {
+      whereClause.name = { contains: search, mode: "insensitive" };
+    }
+    const properties = await this.prisma.property.findMany({
+      where: whereClause,
+      orderBy: { [sortBy]: sortOrder },
+      skip: (page - 1) * take,
+      take: take,
+      include: {
+        propertyImages: true,
+        amenities: true,
+        category: true,
+        rooms: {
+          include: {
+            seasonalRates: true,
+            roomImages: true,
+            roomNonAvailability: true,
+          },
+        },
+      },
+    });
+    const count = await this.prisma.property.count({
+      where: whereClause,
+    });
+    return {
+      data: properties,
+      meta: { page, take, total: count },
+    };
   };
 
-  getAllPropertiesByTenant = async (tenantId: number) => {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-    });
+  getAllPropertiesByTenant = async (tenantId: number, query : GetAllPropertiesDTO) => {
+    const { page, take, sortBy, sortOrder, search } = query;
 
-    if (!tenant) {
-      throw new ApiError("Tenant not found", 400);
-    }
+    const whereClause: Prisma.PropertyWhereInput = {tenantId, deletedAt: null};
+
+    if (search) {
+      whereClause.name = { contains: search, mode: "insensitive" };
+    };
 
     const properties = await this.prisma.property.findMany({
-      where: { tenantId: tenantId },
+      where: whereClause,
+      orderBy: { [sortBy]: sortOrder },
+      skip: (page - 1) * take,
+      take: take,
       include: {
         category: true,
         city: true,
         propertyImages: true,
-        rooms: true,
         amenities: true,
+        rooms: {
+          include: {
+            seasonalRates: true,
+            roomImages: true,
+            roomNonAvailability: true
+          },
+        },
       },
     });
-
     if (properties.length === 0) {
       throw new ApiError("No properties found for this tenant", 400);
-    }
-    return properties;
+    };
+
+    const count = await this.prisma.property.count({
+      where: whereClause,
+    });
+
+    return {
+      data: properties,
+      meta: { page, take, total: count },
+    };
   };
 
   getPropertyById = async (id: number) => {
@@ -149,8 +199,8 @@ export class PropertyService {
           "Cannot change location or property type while active bookings exist",
           400
         );
-      };
-    };
+      }
+    }
 
     const propertyData: any = {};
 
@@ -203,10 +253,10 @@ export class PropertyService {
     });
     if (!property) {
       throw new ApiError("Property not found", 400);
-    };
+    }
     if (property.tenantId !== tenantId) {
       throw new ApiError("Forbidden", 403);
-    };
+    }
 
     const roomWithActiveBooking = property.rooms.find(
       (room) => room.transactions.length > 0
@@ -216,7 +266,7 @@ export class PropertyService {
         "Cannot delete property with active or upcoming bookings",
         400
       );
-    };
+    }
 
     const roomWithActiveMaintenance = property.rooms.find(
       (room) => room.roomNonAvailability.length > 0
@@ -246,10 +296,10 @@ export class PropertyService {
         where: { room: { propertyId: id } },
         data: { deletedAt: new Date() },
       }),
-      this.prisma.seasonalRate.updateMany({
+      /*this.prisma.seasonalRate.updateMany({
         where: { propertyId: id },
         data: { deletedAt: new Date() },
-      }),
+      }),*/
       this.prisma.roomNonAvailability.updateMany({
         where: { room: { propertyId: id } },
         data: { deletedAt: new Date() },

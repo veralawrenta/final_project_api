@@ -12,14 +12,3 @@ export class UpdatePropertyImageDTO {
   isCover?: boolean;
 }
 
-export class CreateRoomImageDTO {
-  @IsNotEmpty()
-  @IsBoolean()
-  isCover?: boolean;
-}
-
-export class UpdateRoomImageDTO {
-  @IsOptional()
-  @IsBoolean()
-  isCover?: boolean;
-}

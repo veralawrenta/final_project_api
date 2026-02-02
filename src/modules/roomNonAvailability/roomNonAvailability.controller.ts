@@ -3,6 +3,7 @@ import { RoomNonAvailabilityService } from "./roomNonAvailability.service";
 import { plainToInstance } from "class-transformer";
 import {
   CreateRoomNonAvailabilityDTO,
+  GetRoomNonAvailabilitiesByTenant,
   UpdateRoomNonAvailabilityDTO,
 } from "./dto/roomNonAvailability";
 
@@ -52,9 +53,11 @@ export class RoomNonAvailabilityController {
 
   getAllRoomNonAvailabilitiesByTenant = async (req: Request, res: Response) => {
     const tenantId = Number(res.locals.user.tenant.id);
+    const query = plainToInstance(GetRoomNonAvailabilitiesByTenant, req.query);
     const result =
       await this.roomNonAvailabilityService.getAllRoomNonAvailabilitiesByTenant(
-        tenantId
+        tenantId,
+        query,
       );
     return res.status(200).send(result);
   };

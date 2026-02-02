@@ -190,8 +190,8 @@ model Room {
   basePrice   Int
   totalGuests Int
   description String @db.Text
-  totalUnit   Int
-
+  totalUnits   Int
+  
   propertyId Int
   property   Property @relation(fields: [propertyId], references: [id])
 
@@ -213,7 +213,7 @@ model RoomImage {
   roomId Int
   room     Room    @relation(fields: [roomId], references: [id])
   
-  urlImage String
+  urlImages String
   isCover   Boolean @default(false)
 
   createdAt DateTime  @default(now())

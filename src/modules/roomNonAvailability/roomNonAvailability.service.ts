@@ -1,8 +1,14 @@
-import { PrismaClient } from "../../../generated/prisma/client";
+import { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
 import {
+  getTodayDateOnly,
+  formattedDate,
+} from "../../utils/date.utils";
+import { PaginationQueryParams } from "../pagination/dto/pagination.dto";
+import {
   CreateRoomNonAvailabilityDTO,
+  GetRoomNonAvailabilitiesByTenant,
   UpdateRoomNonAvailabilityDTO,
 } from "./dto/roomNonAvailability";
 
@@ -20,26 +26,41 @@ export class RoomNonAvailabilityService {
   ) => {
     const room = await this.prisma.room.findFirst({
       where: { id: roomId, property: { tenantId }, deletedAt: null },
+      include: { property: true },
     });
     if (!room) {
       throw new ApiError("Room not found", 400);
     }
+    const startDate = formattedDate(body.startDate);
+    const endDate = formattedDate(body.endDate);
+    const today = getTodayDateOnly();
 
-    const startDate = new Date(body.startDate);
-    const endDate = new Date(body.endDate);
+    if (startDate < today || endDate < today) {
+      throw new ApiError(
+        "Start date and end date cannot be in the past",
+        400
+      );
+    };
+    if (startDate == null || endDate == null) {
+      throw new ApiError("Invalid date format", 400);
+    };
     if (startDate >= endDate) {
       throw new ApiError("End date must be after start Date", 400);
-    }
-    if (body.roomInventory > room.totalUnit) {
-      throw new ApiError("Maintenance block exceeds the total units", 400);
-    }
+    };
 
+    if (body.roomInventory <= 0) {
+      throw new ApiError("Room inventory must be greater than zero", 400);
+    };
+    if (body.roomInventory > room.totalUnits) {
+      throw new ApiError("Maintenance block exceeds the total units", 400);
+    };
+  
     const overlapNonAvailability =
       await this.prisma.roomNonAvailability.findFirst({
         where: {
-          roomId: roomId,
-          startDate: { lte: body.startDate },
-          endDate: { gte: body.endDate },
+          roomId,
+          startDate: { lte: endDate },
+          endDate: { gte: startDate },
           deletedAt: null,
         },
       });
@@ -52,8 +73,8 @@ export class RoomNonAvailabilityService {
     const roomNonAvailability = await this.prisma.roomNonAvailability.create({
       data: {
         roomId,
-        startDate: new Date(body.startDate),
-        endDate: new Date(body.endDate),
+        startDate,
+        endDate,
         reason: body.reason,
         roomInventory: body.roomInventory,
       },
@@ -75,19 +96,24 @@ export class RoomNonAvailabilityService {
     }
     if (maintenanceBlock.room.property.tenantId !== tenantId) {
       throw new ApiError("Forbidden", 403);
-    };
+    }
     const startDate = body.startDate
-      ? new Date(body.startDate)
+      ? formattedDate(body.startDate)
       : maintenanceBlock.startDate;
     const endDate = body.endDate
-      ? new Date(body.endDate)
+      ? formattedDate(body.endDate)
       : maintenanceBlock.endDate;
+
     const roomInventory = body.roomInventory ?? maintenanceBlock.roomInventory;
 
     if (startDate >= endDate) {
       throw new ApiError("End date must be after start Date", 400);
     };
-    if (roomInventory > maintenanceBlock.room.totalUnit) {
+
+    if (roomInventory <= 0) {
+      throw new ApiError("Room inventory must be greater than zero", 400);
+    };
+    if (roomInventory > maintenanceBlock.room.totalUnits) {
       throw new ApiError("Maintenance block exceeds the total units", 400);
     };
 
@@ -98,6 +124,7 @@ export class RoomNonAvailabilityService {
         deletedAt: null,
         startDate: { lte: endDate },
         endDate: { gte: startDate },
+        reason: body.reason || maintenanceBlock.reason,
       },
     });
     if (overlapMaintenance) {
@@ -121,38 +148,7 @@ export class RoomNonAvailabilityService {
 
   deleteroomNonAvailability = async (id: number, tenantId: number) => {
     const maintenance = await this.prisma.roomNonAvailability.findFirst({
-      where : { id, deletedAt: null },
-      include: {
-        room: {
-          include: {
-            property : true,
-          },
-        },
-      },
-    });
-    if (!maintenance) { throw new ApiError ("Room non-availability not found", 404)};
-    if (maintenance.room.property.tenantId !== tenantId) { throw new ApiError ("Forbidden", 403)};
-    
-    const deletedMaintenance = await this.prisma.roomNonAvailability.update({
-      where : { id },
-      data : {
-        deletedAt : new Date (),
-      },
-    });
-    return deletedMaintenance;
-  };
-
-  getAllRoomNonAvailabilitiesByTenant = async (tenantId: number) => {
-    const maintenances = await this.prisma.roomNonAvailability.findMany({
-      where: {
-        deletedAt: null,
-        room: {
-          property: {
-            tenantId: tenantId,
-            deletedAt: null,
-          },
-        },
-      },
+      where: { id, deletedAt: null },
       include: {
         room: {
           include: {
@@ -160,14 +156,70 @@ export class RoomNonAvailabilityService {
           },
         },
       },
-      orderBy: {
-        startDate: "asc",
+    });
+    if (!maintenance) {
+      throw new ApiError("Room non-availability not found", 404);
+    }
+    if (maintenance.room.property.tenantId !== tenantId) {
+      throw new ApiError("Forbidden", 403);
+    }
+
+    const deletedMaintenance = await this.prisma.roomNonAvailability.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
       },
     });
-    return maintenances;
+    return deletedMaintenance;
   };
 
-  getAllRoomNonAvailabilitiesByRoom = async (tenantId: number, roomId: number) => {
+  getAllRoomNonAvailabilitiesByTenant = async (
+    tenantId: number,
+    query: GetRoomNonAvailabilitiesByTenant
+  ) => {
+    const { page, take, sortBy, sortOrder, search } = query;
+    const whereClause: Prisma.RoomNonAvailabilityWhereInput = {
+      deletedAt: null,
+      room: {
+        property: {
+          tenantId,
+          deletedAt: null,
+        },
+      },
+    };
+
+    if (search) { whereClause.reason = { contains: search, mode: "insensitive" }};
+
+    const maintenances = await this.prisma.roomNonAvailability.findMany({
+      where: whereClause,
+      orderBy: { [sortBy]: sortOrder },
+      skip: (page - 1) * take,
+      take: take,
+      include: {
+        room: {
+          include: {
+            property: true,
+            roomImages: true,
+            seasonalRates: true,
+          },
+        },
+      },
+    });
+
+    const count = await this.prisma.roomNonAvailability.count({
+      where: whereClause,
+    });
+
+    return {
+      data: maintenances,
+      meta: { page, take, total: count },
+    };
+  };
+
+  getAllRoomNonAvailabilitiesByRoom = async (
+    tenantId: number,
+    roomId: number
+  ) => {
     const room = await this.prisma.room.findFirst({
       where: {
         id: roomId,
@@ -178,11 +230,11 @@ export class RoomNonAvailabilityService {
         },
       },
     });
-  
+
     if (!room) {
       throw new ApiError("Room not found or you are not the owner", 404);
     }
-  
+
     const maintenances = await this.prisma.roomNonAvailability.findMany({
       where: {
         roomId,
@@ -192,8 +244,7 @@ export class RoomNonAvailabilityService {
         startDate: "asc",
       },
     });
-  
+
     return maintenances;
   };
-  
 }
