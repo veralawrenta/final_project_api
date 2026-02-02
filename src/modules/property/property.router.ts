@@ -5,8 +5,15 @@ import { JWT_ACCESS_SECRET } from "../../config/env";
 import { PropertyController } from "./property.controller";
 import { RoleMiddleware } from "../../middlewares/role.middleware";
 import { PropertyImagesController } from "../propertyImage/propertyImage.controller";
-import { validateBody } from "../../middlewares/validation.middleware";
+import {
+  validateBody,
+  validateQuery,
+} from "../../middlewares/validation.middleware";
 import { CreatePropertyImageDTO } from "../propertyImage/dto/propertyImage.dto";
+import {
+  GetPropertyAvailabilityQueryDTO,
+  GetSearchAvailablePropertiesDTO,
+} from "./dto/property.dto";
 import { RoomController } from "../room/room.controller";
 import { CreateRoomDTO } from "../room/dto/room.dto";
 import { AmenityController } from "../amenity/amenity.controller";
@@ -34,6 +41,11 @@ export class PropertyRouter {
   }
 
   private initializedRoutes = () => {
+    this.router.get(
+      "/search",
+      validateQuery(GetSearchAvailablePropertiesDTO),
+      this.propertyController.getSearchAvailableProperties
+    );
     this.router.get("/public", this.propertyController.getAllProperties);
     this.router.get(
       "/",
@@ -41,7 +53,15 @@ export class PropertyRouter {
       this.roleMiddleware.requireRoles("TENANT"),
       this.propertyController.getAllPropertiesByTenant
     );
-    this.router.get("/:id", this.propertyController.getPropertyById);
+    this.router.get(
+      "/:id/availability",
+      validateQuery(GetPropertyAvailabilityQueryDTO),
+      this.propertyController.getPropertyByIdWithAvailability
+    );
+    this.router.get(
+      "/:id/availability-preview",
+      this.propertyController.get30DayPropertyCalendar
+    );
     this.router.post(
       "/",
       this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),

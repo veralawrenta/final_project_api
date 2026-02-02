@@ -5,6 +5,7 @@ import {
   getTodayDateOnly,
   formattedDate,
 } from "../../utils/date.utils";
+import { RedisService } from "../redis/redis.service";
 import { PaginationQueryParams } from "../pagination/dto/pagination.dto";
 import {
   CreateRoomNonAvailabilityDTO,
@@ -14,10 +15,19 @@ import {
 
 export class RoomNonAvailabilityService {
   private prisma: PrismaClient;
+  private redis: RedisService;
 
   constructor() {
     this.prisma = prisma;
+    this.redis = new RedisService();
   }
+
+  private invalidatePropertySearchCache = async (propertyId: number) => {
+    // Search results depend on maintenance availability
+    await this.redis.delByPrefix("property:search:");
+    // Calendar cache is per property
+    await this.redis.delByPrefix(`property:calendar30:${propertyId}:`);
+  };
 
   createRoomNonAvailability = async (
     tenantId: number,
@@ -79,6 +89,7 @@ export class RoomNonAvailabilityService {
         roomInventory: body.roomInventory,
       },
     });
+    await this.invalidatePropertySearchCache(room.property.id);
     return roomNonAvailability;
   };
 
@@ -143,6 +154,7 @@ export class RoomNonAvailabilityService {
           roomInventory,
         },
       });
+    await this.invalidatePropertySearchCache(maintenanceBlock.room.property.id);
     return updatedRoomNonAvailability;
   };
 
@@ -170,6 +182,7 @@ export class RoomNonAvailabilityService {
         deletedAt: new Date(),
       },
     });
+    await this.invalidatePropertySearchCache(maintenance.room.property.id);
     return deletedMaintenance;
   };
 
