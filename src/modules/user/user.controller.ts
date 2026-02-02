@@ -48,7 +48,7 @@ export class UserController {
   };
 
   getMeProfile = async (req: Request, res: Response) => {
-      console.log("JWT USER:", res.locals.user);
+      //console.log("JWT USER:", res.locals.user);
       const authUserId = res.locals.user.id;
       if (!authUserId) {
         throw new ApiError("User ID not found in token", 401);

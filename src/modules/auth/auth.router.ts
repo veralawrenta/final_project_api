@@ -67,7 +67,7 @@ export class AuthRouter {
       validateBody(ResetPasswordDTO),
       this.authController.resetPassword
     );
-    this.router.post("/change-email", this.authController.changeEmail);
+    this.router.post("/change-email", this.jwt.verifyToken(process.env.JWT_ACCESS_SECRET!), this.authController.changeEmail);
     this.router.patch(
       "/verify-change-email",
       this.jwt.verifyToken(process.env.JWT_CHANGE_EMAIL_SECRET!),
@@ -75,11 +75,12 @@ export class AuthRouter {
     );
     this.router.post(
       "/resend-change-email",
-      this.jwt.verifyToken(process.env.JWT_CHANGE_EMAIL_SECRET!),
+      this.jwt.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.authController.resendChangeEmailVerification
     );
     this.router.patch(
       "/change-password",
+      this.jwt.verifyToken(process.env.JWT_ACCESS_SECRET!),
       validateBody(ChangePasswordDTO),
       this.authController.changePassword
     );

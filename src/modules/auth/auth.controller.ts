@@ -66,8 +66,8 @@ export class AuthController {
   };
 
   resetPassword = async (req: Request, res: Response) => {
-    console.log("AUTH USER FROM JWT:", res.locals.user);
-    console.log("TOKEN FROM HEADER:", req.headers.authorization);
+    //console.log("AUTH USER FROM JWT:", res.locals.user);
+    //console.log("TOKEN FROM HEADER:", req.headers.authorization);
 
     const authUserId = res.locals.user.id;
     const verificationToken = req.headers.authorization!.split(" ")[1];
@@ -88,7 +88,7 @@ export class AuthController {
 
   changeEmail = async (req: Request, res: Response) => {
     const authUserId = res.locals.user.id;
-    const { newEmail, password } = req.body;
+    const { newEmail } = req.body;
     const result = await this.authService.changeEmail(authUserId, newEmail);
     return res.status(200).send(result);
   };

@@ -2,6 +2,8 @@ import { Router } from "express";
 import { RoomNonAvailabilityController } from "./roomNonAvailability.controller";
 import { JWTMiddleware } from "../../middlewares/jwt.middleware";
 import { RoleMiddleware } from "../../middlewares/role.middleware";
+import { validateBody } from "../../middlewares/validation.middleware";
+import { CreateRoomNonAvailabilityDTO, GetRoomNonAvailabilitiesByTenant, UpdateRoomNonAvailabilityDTO } from "./dto/roomNonAvailability";
 
 export class RoomNonAvailabilityRouter {
   router: Router;
@@ -18,15 +20,17 @@ export class RoomNonAvailabilityRouter {
   }
   private initializedRoutes = () => {
     this.router.post(
-      "/room:roomId",
+      "/room/:roomId",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
+      validateBody(CreateRoomNonAvailabilityDTO),
       this.roomNonAvailabilityController.createRoomNonAvailability
     );
     this.router.patch(
       "/:id",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
+      validateBody(UpdateRoomNonAvailabilityDTO),
       this.roomNonAvailabilityController.updateRoomNonAvailability
     );
     this.router.delete(
@@ -36,7 +40,7 @@ export class RoomNonAvailabilityRouter {
       this.roomNonAvailabilityController.deleteroomNonAvailability
     );
     this.router.get(
-      "/tenant",
+      "/",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
       this.roomNonAvailabilityController.getAllRoomNonAvailabilitiesByTenant

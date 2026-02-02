@@ -32,16 +32,16 @@ export class RoomRouter {
     this.router.get("/:id", this.roomController.getRoomById);
     this.router.post(
       "/property/:propertyId",
-      validateBody(CreateRoomDTO),
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
+      validateBody(CreateRoomDTO),
       this.roomController.createRoom
     );
     this.router.patch(
       "/:id",
-      validateBody(UpdateRoomDTO),
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
+      validateBody(UpdateRoomDTO),
       this.roomController.updateRoom
     );
     this.router.delete(
@@ -51,4 +51,5 @@ export class RoomRouter {
       this.roomController.deleteRoom
     );
   };
-}
+  getRouter = () => this.router;
+};

@@ -1,7 +1,7 @@
 import { PrismaClient } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import { CreateAmenityDTO, UpdateAmenityDTO } from "./dto/amenity.dto";
+import { CreateAmenitiesDTO, CreateAmenityDTO, UpdateAmenityDTO } from "./dto/amenity.dto";
 
 export class AmenityService {
   private prisma: PrismaClient;
@@ -49,6 +49,34 @@ export class AmenityService {
     });
     return createdAmenity;
   };
+
+  createAmenities = async (
+    tenantId: number,
+    propertyId: number,
+    body: CreateAmenitiesDTO
+  ) => {
+    const property = await this.prisma.property.findFirst({
+      where: { id: propertyId, tenantId: tenantId, deletedAt: null },
+    });
+    if (!property) {
+      throw new ApiError("Property not found", 404);
+    }
+    const existingAmenities = await this.prisma.amenity.findMany({
+      where: { propertyId,  name: { in: body.names }, deletedAt: null },
+    });
+    if (existingAmenities.length >0 ) {
+      throw new ApiError("Amenity in property already exist", 400);
+    }
+
+    const createdAmenities = await this.prisma.amenity.createMany({
+      data: body.names.map((name) => ({
+        name,
+        propertyId,
+      })),
+    });
+    return createdAmenities;
+  };
+
   updateAmenity = async (
     id: number,
     tenantId: number,

@@ -1,7 +1,8 @@
-import { PrismaClient } from "../../../generated/prisma/client";
+import { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import { CreateRoomDTO, UpdateRoomDTO } from "./dto/room.dto";
+import { PaginationQueryParams } from "../pagination/dto/pagination.dto";
+import { CreateRoomDTO, GetAllRoomsDTO, UpdateRoomDTO } from "./dto/room.dto";
 
 export class RoomService {
   private prisma: PrismaClient;
@@ -30,15 +31,25 @@ export class RoomService {
     return rooms;
   };
 
-  getAllRoomsByTenant = async (tenantId: number) => {
-    const rooms = await this.prisma.room.findMany({
-      where: {
-        property: {
-          tenantId,
-          deletedAt: null,
-        },
+  getAllRoomsByTenant = async (
+    tenantId: number,
+    query: GetAllRoomsDTO
+  ) => {
+    const { page, take, sortBy, sortOrder } = query;
+
+    const whereClause: Prisma.RoomWhereInput = {
+      deletedAt: null,
+      property: {
+        tenantId,
         deletedAt: null,
       },
+    };
+
+    const rooms = await this.prisma.room.findMany({
+      where: whereClause,
+      orderBy: { [sortBy]: sortOrder },
+      skip: (page - 1) * take,
+      take: take,
       include: {
         property: true,
         roomImages: true,
@@ -46,18 +57,24 @@ export class RoomService {
         seasonalRates: true,
       },
     });
-    return rooms;
+    const count = await this.prisma.room.count({
+      where: whereClause,
+    });
+    return {
+      data: rooms,
+      meta: { page, take, total: count },
+    };
   };
 
   getRoomId = async (id: number) => {
     const room = await this.prisma.room.findUnique({
-        where : { id, deletedAt: null },
-        include: {
-            property: true,
-            roomImages: true,
-            roomNonAvailability: true,
-            seasonalRates: true,
-        },
+      where: { id, deletedAt: null },
+      include: {
+        property: true,
+        roomImages: true,
+        roomNonAvailability: true,
+        seasonalRates: true,
+      },
     });
     return room;
   };
@@ -91,7 +108,7 @@ export class RoomService {
         basePrice: body.basePrice,
         totalGuests: body.totalGuests,
         description: body.description,
-        totalUnit: body.totalUnit,
+        totalUnits: body.totalUnits,
         propertyId: propertyId,
       },
     });
@@ -123,7 +140,7 @@ export class RoomService {
       },
     });
 
-    if (body.totalUnit !== undefined && body.totalUnit < activeBookingsCount) {
+    if (body.totalUnits !== undefined && body.totalUnits < activeBookingsCount) {
       throw new ApiError(
         "Total units cannot be less than existing active bookings",
         400
@@ -135,7 +152,7 @@ export class RoomService {
     if (body.basePrice !== undefined) roomData.basePrice = body.basePrice;
     if (body.totalGuests !== undefined) roomData.totalGuests = body.totalGuests;
     if (body.description !== undefined) roomData.description = body.description;
-    if (body.totalUnit !== undefined) roomData.totalUnit = body.totalUnit;
+    if (body.totalUnits !== undefined) roomData.totalUnit = body.totalUnits;
 
     const updatedRoom = await this.prisma.room.update({
       where: { id },
@@ -170,10 +187,10 @@ export class RoomService {
 
     if (room.property.tenantId !== tenantId) {
       throw new ApiError("Forbidden", 403);
-    };
+    }
     if (room.transactions.length > 0) {
       throw new ApiError("Cannot delete room with active bookings", 400);
-    };
+    }
 
     await this.prisma.$transaction([
       this.prisma.room.update({
@@ -184,15 +201,15 @@ export class RoomService {
         where: { roomId: id },
         data: { deletedAt: new Date() },
       }),
-      this.prisma.seasonalRate.updateMany({
+      /*this.prisma.seasonalRate.updateMany({
         where: { roomId: id },
         data: { deletedAt: new Date() },
-      }),
+      }),*/
       this.prisma.roomNonAvailability.updateMany({
         where: { roomId: id },
         data: { deletedAt: new Date() },
       }),
     ]);
-    return { message: "Room deleted successfully"}
+    return { message: "Room deleted successfully" };
   };
 }

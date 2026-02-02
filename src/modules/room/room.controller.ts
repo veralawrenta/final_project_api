@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { RoomService } from "./room.service";
 import { plainToInstance } from "class-transformer";
-import { CreateRoomDTO, UpdateRoomDTO } from "./dto/room.dto";
+import { CreateRoomDTO, GetAllRoomsDTO, UpdateRoomDTO } from "./dto/room.dto";
 
 export class RoomController {
   roomService: RoomService;
@@ -22,7 +22,8 @@ export class RoomController {
 
   getAllRoomsByTenant = async (req: Request, res: Response) => {
     const tenantId = Number(res.locals.user.tenant.id);
-    const result = await this.roomService.getAllRoomsByTenant(tenantId);
+    const query = plainToInstance(GetAllRoomsDTO, req.query);
+    const result = await this.roomService.getAllRoomsByTenant(tenantId, query);
     return res.status(200).send(result);
   };
 

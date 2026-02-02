@@ -45,13 +45,13 @@ export class RoomImageRouter {
       validateBody(UpdateRoomImageDTO),
       this.roomImagesController.updateRoomImage
     );
-/*
+
     this.router.delete(
       "/:id",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
       this.roomImagesController.deleteRoomImage
-    );*/
+    );
   };
 
   getRouter = () => this.router;

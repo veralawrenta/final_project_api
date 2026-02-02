@@ -2,10 +2,7 @@ import { PrismaClient } from "../../../generated/prisma/client";
 import { CloudinaryService } from "../../cloudinary/cloudinary.service";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import {
-  CreateRoomImageDTO,
-  UpdateRoomImageDTO,
-} from "./dto/roomImage.dto";
+import { CreateRoomImageDTO, UpdateRoomImageDTO } from "./dto/roomImage.dto";
 
 export class RoomImagesService {
   private prisma: PrismaClient;
@@ -63,7 +60,7 @@ export class RoomImagesService {
     const roomImage = await this.prisma.roomImage.create({
       data: {
         roomId,
-        urlImage: secure_url,
+        urlImages: secure_url,
         isCover: body.isCover,
       },
     });
@@ -105,6 +102,33 @@ export class RoomImagesService {
         data: { isCover: body.isCover },
       });
       return updatedRoomImage;
-    };
+    }
   };
-};
+
+  deleteRoomImage = async (id: number, tenantId: number) => {
+    const image = await this.prisma.roomImage.findFirst({
+      where: { id },
+      include: {
+        room: {
+          include: {
+            property: true,
+          },
+        },
+      },
+    });
+    if (!image) {
+      throw new ApiError("Room image not exist", 404);
+    }
+    if (image.room.property.tenantId !== tenantId) {
+      throw new ApiError("Unauthorized", 403);
+    }
+
+    const deletedRoomImage = await this.prisma.roomImage.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+    return deletedRoomImage;
+  };
+}

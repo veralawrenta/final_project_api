@@ -44,4 +44,10 @@ export class RoomImagesController {
     const result = await this.roomImagesService.updateRoomImage(id, tenantId, data);
     return res.status(200).send(result);
   };
-}
+  deleteRoomImage = async (req: Request, res: Response) => {
+    const tenantId = Number(res.locals.user.tenant.id);
+    const id = Number(req.params.id);
+    const result = await this.roomImagesService.deleteRoomImage(id, tenantId);
+    return res.status(200).send(result);
+  };
+};
