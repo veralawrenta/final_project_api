@@ -4,18 +4,30 @@ import { JWTMiddleware } from "../../middlewares/jwt.middleware";
 import { JWT_ACCESS_SECRET } from "../../config/env";
 import { PropertyController } from "./property.controller";
 import { RoleMiddleware } from "../../middlewares/role.middleware";
+import { PropertyImagesController } from "../propertyImage/propertyImage.controller";
+import { validateBody } from "../../middlewares/validation.middleware";
+import { CreatePropertyImageDTO } from "../propertyImage/dto/propertyImage.dto";
+import { RoomController } from "../room/room.controller";
+import { CreateRoomDTO } from "../room/dto/room.dto";
+import { AmenityController } from "../amenity/amenity.controller";
 
 export class PropertyRouter {
   router: Router;
   propertyController: PropertyController;
-  uploadMiddleware: UploaderMiddleware;
+  propertyImagesController: PropertyImagesController;
+  roomController: RoomController;
+  amenityController: AmenityController;
+  uploaderMiddleware: UploaderMiddleware;
   jwtMiddleware: JWTMiddleware;
   roleMiddleware: RoleMiddleware;
 
   constructor() {
     this.router = Router();
     this.propertyController = new PropertyController();
-    this.uploadMiddleware = new UploaderMiddleware();
+    this.propertyImagesController = new PropertyImagesController();
+    this.roomController = new RoomController();
+    this.amenityController = new AmenityController();
+    this.uploaderMiddleware = new UploaderMiddleware();
     this.jwtMiddleware = new JWTMiddleware();
     this.roleMiddleware = new RoleMiddleware();
     this.initializedRoutes();
@@ -54,6 +66,25 @@ export class PropertyRouter {
       this.roleMiddleware.requireRoles("TENANT"),
       this.propertyController.unpublishProperty
     );
+    this.router.post(
+      "/:id/property-images",
+      this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      this.roleMiddleware.requirePropertyOwnership,
+      this.uploaderMiddleware
+        .upload()
+        .fields([{ name: "urlImages", maxCount: 1 }]),
+      validateBody(CreatePropertyImageDTO),
+      this.propertyImagesController.uploadPropertyImage
+    );
+    this.router.post(
+      "/:id/rooms",
+      this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      this.roleMiddleware.requirePropertyOwnership,
+      validateBody(CreateRoomDTO),
+      this.roomController.createRoom
+    );
     this.router.patch(
       "/:id",
       this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),
@@ -67,6 +98,13 @@ export class PropertyRouter {
       this.roleMiddleware.requireRoles("TENANT"),
       this.roleMiddleware.requirePropertyOwnership,
       this.propertyController.deleteProperty
+    );
+    this.router.post(
+      "/:id/amenities",
+      this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      this.roleMiddleware.requirePropertyOwnership,
+      this.amenityController.createAmenity
     );
   };
   getRouter = () => {

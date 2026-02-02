@@ -16,6 +16,7 @@ import { RoomImageRouter } from "./modules/roomImage/roomImage.router";
 import { SeasonalRateRouter } from "./modules/seasonalRates/seasonalRates.router";
 import { RoomRouter } from "./modules/room/room.router";
 import { CategoryRouter } from "./modules/category/category.router";
+import { DashboardRouter } from "./modules/dashboard/dashboard.router";
 
 export class App {
   app: Express;
@@ -40,6 +41,7 @@ export class App {
     const authRouter = new AuthRouter();
     const oAuthRouter = new OAuthRouter();
     const userRouter = new UserRouter();
+    const dashboardRouter = new DashboardRouter ();
     const propertyRouter = new PropertyRouter();
     const roomRouter = new RoomRouter();
     const cityRouter = new CityRouter();
@@ -54,9 +56,10 @@ export class App {
     this.app.use("/auth", authRouter.getRouter())
     this.app.use("/oauth", oAuthRouter.getRouter())
     this.app.use("/users", userRouter.getRouter())
+    this.app.use("/tenants", dashboardRouter.getRouter())
     this.app.use("/properties", propertyRouter.getRouter())
     this.app.use("/rooms", roomRouter.getRouter())
-    this.app.use("categories", categoryRouter.getRouter())
+    this.app.use("/categories", categoryRouter.getRouter())
     this.app.use("/cities", cityRouter.getRouter())
     this.app.use("/amenities", amenityRouter.getRouter())
     this.app.use("/rooms-non-availability", roomNonAvailabilityRouter.getRouter())
