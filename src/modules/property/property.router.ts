@@ -23,12 +23,51 @@ export class PropertyRouter {
 
   private initializedRoutes = () => {
     this.router.get("/public", this.propertyController.getAllProperties);
-    this.router.get("/", this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!), this.roleMiddleware.requireRoles("TENANT"), this.propertyController.getAllPropertiesByTenant);
+    this.router.get(
+      "/",
+      this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      this.propertyController.getAllPropertiesByTenant
+    );
     this.router.get("/:id", this.propertyController.getPropertyById);
     this.router.post(
-      "/", this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!), this.roleMiddleware.requireRoles("TENANT"), this.propertyController.createProperty);
-    this.router.patch("/:id", this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!), this.roleMiddleware.requireRoles("TENANT"), this.roleMiddleware.requirePropertyOwnership, this.propertyController.updateProperty);
-    this.router.delete("/:id", this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!), this.roleMiddleware.requireRoles("TENANT"), this.roleMiddleware.requirePropertyOwnership, this.propertyController.deleteProperty);
+      "/",
+      this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      this.propertyController.createProperty
+    );
+    this.router.get(
+      "/:id/publishability",
+      this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      this.propertyController.checkPublishability
+    );
+    this.router.patch(
+      "/:id/publish",
+      this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      this.propertyController.publishProperty
+    );
+    this.router.patch(
+      "/:id/unpublish",
+      this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      this.propertyController.unpublishProperty
+    );
+    this.router.patch(
+      "/:id",
+      this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      this.roleMiddleware.requirePropertyOwnership,
+      this.propertyController.updateProperty
+    );
+    this.router.delete(
+      "/:id",
+      this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      this.roleMiddleware.requirePropertyOwnership,
+      this.propertyController.deleteProperty
+    );
   };
   getRouter = () => {
     return this.router;
