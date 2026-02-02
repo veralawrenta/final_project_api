@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from "../../../generated/prisma/client";
+import { Prisma, PrismaClient, PropertyStatus } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
 import {
@@ -140,18 +140,112 @@ export class PropertyService {
         latitude: body.latitude,
         longitude: body.longitude,
         tenantId,
+        propertyStatus: "DRAFT"
       },
     });
     return createdProperty;
   };
 
-  updatePropertyById = async (
+  checkPropertyPublishability = async (id: number, tenantId: number) => {
+    const property = await this.prisma.property.findFirst({
+      where: { id, tenantId, deletedAt: null },
+      include: {
+        propertyImages: {
+          where: { deletedAt: null },
+        },
+        rooms: {
+          where: { deletedAt: null },
+          include: {
+            roomImages: {
+              where: { deletedAt: null },
+            },
+          },
+        },
+      },
+    });
+    
+    if (!property) {
+      throw new ApiError("Property not found", 400);
+    }
+  
+    const hasPropertyImages = property.propertyImages.length > 0;
+    const hasRoom = property.rooms.length > 0;
+    
+    const validRoom = property.rooms.some((room) => {
+      return (
+        room.roomImages.length > 0 &&
+        room.basePrice > 0 &&
+        room.totalUnits > 0 &&
+        room.totalGuests > 0
+      );
+    });
+  
+    const canPublish = validRoom && hasPropertyImages && hasRoom;
+    return {
+      currentStatus: property.propertyStatus,
+      canPublish,
+      checklist: {
+        propertyImages: hasPropertyImages,
+        roomCreated: hasRoom,
+        validRoom,
+      },
+    };
+  };
+
+  publishProperty = async (id: number, tenantId: number) => {
+    const publishability = await this.checkPropertyPublishability(id, tenantId);
+    
+    if (!publishability.canPublish) {
+      const missing = [];
+      if (!publishability.checklist.propertyImages) {
+        missing.push("property images");
+      }
+      if (!publishability.checklist.roomCreated) {
+        missing.push("at least one room");
+      }
+      if (!publishability.checklist.validRoom) {
+        missing.push("valid room configuration (images, price, units, guests)");
+      }
+      
+      throw new ApiError(
+        `Cannot publish property. Missing: ${missing.join(", ")}`,
+        400
+      );
+    };
+  
+    const updatedProperty = await this.prisma.property.update({
+      where: { id },
+      data: { propertyStatus: "PUBLISHED" },
+    });
+  
+    return updatedProperty;
+  };
+
+  unpublishProperty = async (id: number, tenantId: number) => {
+    const property = await this.prisma.property.findFirst({
+      where: { id, tenantId, deletedAt: null },
+    });
+    
+    if (!property) {
+      throw new ApiError("Property not found", 400);
+    }
+  
+    const updatedProperty = await this.prisma.property.update({
+      where: { id },
+      data: { propertyStatus: "DRAFT" },
+    });
+  
+    return updatedProperty;
+  };
+  
+
+  updatePublishedPropertyById = async (
     id: number,
     tenantId: number,
     body: Partial<UpdatePropertyDTO>
   ) => {
     const property = await this.prisma.property.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, propertyStatus: "PUBLISHED" ,deletedAt: null },
       include: {
         propertyImages: true,
         tenant: true,

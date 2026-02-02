@@ -35,6 +35,11 @@ enum PropertyType {
   HOTEL
 }
 
+enum PropertyStatus {
+  PUBLISHED
+  DRAFT
+}
+
 enum Status {
   WAITING_FOR_PAYMENT
   WAITING_FOR_CONFIRMATION
@@ -116,6 +121,7 @@ model Property {
   categoryId Int?
   category   Category? @relation(fields: [categoryId], references: [id])
 
+  propertyStatus PropertyStatus @default(DRAFT)
   propertyType PropertyType
   address      String?
 

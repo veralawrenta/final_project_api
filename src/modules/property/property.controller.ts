@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { PropertyService } from "./property.service";
 import { plainToInstance } from "class-transformer";
-import { CreatePropertyDTO, UpdatePropertyDTO } from "./dto/property.dto";
+import { CreatePropertyDTO, GetAllPropertiesDTO, UpdatePropertyDTO } from "./dto/property.dto";
 
 export class PropertyController {
   private propertyService: PropertyService;
@@ -11,13 +11,15 @@ export class PropertyController {
   }
 
   getAllProperties = async (req: Request, res: Response) => {
-    const result = await this.propertyService.getAllProperties();
+    const query = plainToInstance(GetAllPropertiesDTO, req.body);
+    const result = await this.propertyService.getAllProperties(query);
     return res.status(200).send(result);
   };
 
   getAllPropertiesByTenant = async (req: Request, res: Response) => {
     const tenantId = Number(res.locals.user.tenant.id);
-    const result = await this.propertyService.getAllPropertiesByTenant(tenantId);
+    const query = plainToInstance(GetAllPropertiesDTO, req.body);
+    const result = await this.propertyService.getAllPropertiesByTenant(tenantId, query);
     return res.status(200).send(result);
   };
 
@@ -31,6 +33,27 @@ export class PropertyController {
     const tenantId = Number(res.locals.user.tenant.id);
     const data = plainToInstance(CreatePropertyDTO, req.body);
     const result = await this.propertyService.createProperty(tenantId, data);
+    return res.status(201).send(result);
+  };
+
+  checkPublishability = async (req: Request, res: Response) => {
+    const tenantId = Number(res.locals.user.tenant.id);
+    const id = Number (req.params.id);
+    const result = await this.propertyService.checkPropertyPublishability(id, tenantId);
+    return res.status(200).send(result);
+  };
+
+  publishProperty = async (req: Request, res: Response) => {
+    const tenantId = Number(res.locals.user.tenant.id);
+    const id = Number (req.params.id);
+    const result = await this.propertyService.checkPropertyPublishability(id, tenantId);
+    return res.status(200).send(result);
+  };
+
+  unpublishProperty =  async (req: Request, res: Response) => {
+    const tenantId = Number(res.locals.user.tenant.id);
+    const id = Number (req.params.id);
+    const result = await this.propertyService.checkPropertyPublishability(id, tenantId);
     return res.status(200).send(result);
   };
 
@@ -38,7 +61,7 @@ export class PropertyController {
     const id = Number(req.params.id);
     const tenantId= Number(res.locals.user.tenant.id)
     const data = plainToInstance(UpdatePropertyDTO, req.body);
-    const result = await this.propertyService.updatePropertyById(id, tenantId, data);
+    const result = await this.propertyService.updatePublishedPropertyById(id, tenantId, data);
     return res.status(200).send(result);
   };
 
