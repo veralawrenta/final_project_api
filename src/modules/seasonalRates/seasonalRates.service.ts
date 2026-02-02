@@ -5,6 +5,7 @@ import {
   getTodayDateOnly,
   formattedDate,
 } from "../../utils/date.utils";
+import { RedisService } from "../redis/redis.service";
 import {
   CreateSeasonalRatesDTO,
   GetSeasonalRatesDTO,
@@ -13,10 +14,19 @@ import {
 
 export class SeasonalRatesService {
   private prisma: PrismaClient;
+  private redis: RedisService;
 
   constructor() {
     this.prisma = prisma;
+    this.redis = new RedisService();
   }
+
+  private invalidatePropertySearchCache = async (propertyId: number) => {
+    // Search results depend on seasonal pricing and availability
+    await this.redis.delByPrefix("property:search:");
+    // Calendar cache is per property
+    await this.redis.delByPrefix(`property:calendar30:${propertyId}:`);
+  };
 
   createSeasonalRate = async (
     tenantId: number,
@@ -34,7 +44,7 @@ export class SeasonalRatesService {
       throw new ApiError("Fixed price must be greater than 0", 400);
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const created = await this.prisma.$transaction(async (tx) => {
       const room = await this.prisma.room.findFirst({
         where: { id: roomId, property: { tenantId }, deletedAt: null },
         include: { property: true },
@@ -55,7 +65,7 @@ export class SeasonalRatesService {
         throw new ApiError("Seasonal rate overlaps existing rate", 400);
       }
 
-      await tx.seasonalRate.create({
+      const seasonalRate = await tx.seasonalRate.create({
         data: {
           roomId,
           name: body.name,
@@ -64,7 +74,10 @@ export class SeasonalRatesService {
           fixedPrice: body.fixedPrice,
         },
       });
+      return { seasonalRate, propertyId: room.property.id };
     });
+    await this.invalidatePropertySearchCache(created.propertyId);
+    return created.seasonalRate;
   };
 
   getAllSeasonalRatesByTenant = async (
@@ -111,7 +124,7 @@ export class SeasonalRatesService {
     tenantId: number,
     body: UpdateSeasonalRatesDTO
   ) => {
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       const seasonalRate = await this.prisma.seasonalRate.findUnique({
         where: { id },
         include: {
@@ -171,8 +184,10 @@ export class SeasonalRatesService {
           fixedPrice: body.fixedPrice ?? seasonalRate.fixedPrice,
         },
       });
-      return updatedSeasonalRate;
+      return { updatedSeasonalRate, propertyId: seasonalRate.room.property.id };
     });
+    await this.invalidatePropertySearchCache(updated.propertyId);
+    return updated.updatedSeasonalRate;
   };
 
   deleteSeasonalRate = async (id: number, tenantId: number) => {
@@ -208,6 +223,7 @@ export class SeasonalRatesService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+    await this.invalidatePropertySearchCache(seasonalRate.room.property.id);
     return { message: "Seasonal rate deleted successfully" };
   };
 }

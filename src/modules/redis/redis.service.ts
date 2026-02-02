@@ -14,4 +14,28 @@ export class RedisService {
             return await connection.set(key,value);
         }
     };
+
+    delValue = async (key: string) => {
+        return await connection.del(key);
+    };
+
+    /**
+     * Delete keys by prefix using SCAN (safer than KEYS).
+     * Example prefix: "property:search:" will match "property:search:*"
+     */
+    delByPrefix = async (prefix: string) => {
+        const match = `${prefix}*`;
+        let cursor = "0";
+        let deleted = 0;
+
+        do {
+            const [nextCursor, keys] = await connection.scan(cursor, "MATCH", match, "COUNT", 200);
+            cursor = nextCursor;
+            if (keys.length > 0) {
+                deleted += await connection.del(...keys);
+            }
+        } while (cursor !== "0");
+
+        return deleted;
+    };
 }
