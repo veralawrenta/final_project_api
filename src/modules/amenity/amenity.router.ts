@@ -21,7 +21,6 @@ export class AmenityRouter {
   }
   private initializedRoutes = () => {
     this.router.get("/property/:propertyId", this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!), this.roleMiddleware.requireRoles("TENANT"), this.amenityController.getAmenitiesByTenant);
-    this.router.post("/property/:propertyId", this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!), this.roleMiddleware.requireRoles("TENANT"), this.amenityController.createAmenity);
     this.router.patch("/:id", this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!), this.roleMiddleware.requireRoles("TENANT"), this.amenityController.updateAmenity);
     this.router.delete("/:id", this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!), this.roleMiddleware.requireRoles("TENANT"), this.amenityController.deleteAmenity)
   };

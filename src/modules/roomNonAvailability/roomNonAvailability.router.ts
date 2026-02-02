@@ -19,13 +19,6 @@ export class RoomNonAvailabilityRouter {
     this.initializedRoutes();
   }
   private initializedRoutes = () => {
-    this.router.post(
-      "/room/:roomId",
-      this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
-      this.roleMiddleware.requireRoles("TENANT"),
-      validateBody(CreateRoomNonAvailabilityDTO),
-      this.roomNonAvailabilityController.createRoomNonAvailability
-    );
     this.router.patch(
       "/:id",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
