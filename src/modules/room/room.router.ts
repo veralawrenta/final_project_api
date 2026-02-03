@@ -59,7 +59,7 @@ export class RoomRouter {
       this.roomController.deleteRoom
     );
     this.router.post(
-      "/room/:roomId",
+      "/:id/room-images",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
       this.uploaderMiddleware
