@@ -69,6 +69,10 @@ export class GetAllPropertiesDTO extends PaginationQueryParams {
   @IsOptional()
   @IsString()
   search?: string = "";
+
+  @IsOptional()
+  @IsEnum(PropertyType)
+  propertyType?: PropertyType;
 }
 
 export class GetPropertyAvailabilityQueryDTO {

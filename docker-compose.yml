@@ -29,11 +29,11 @@ services:
       timeout: 2s
       retries: 20
 
-#cache:
- #   image: redis
-  #  container_name: redis-container
-  #  restart: always
-  #  ports:
-  #    - '6379:6379'
-  #  volumes: 
-  #    - ./docker/redis:/data
+  cache:
+    image: redis
+    container_name: redis-container
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes: 
+      - ./docker/redis:/data

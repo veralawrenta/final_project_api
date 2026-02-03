@@ -6,6 +6,7 @@ import {
   ChangePasswordDTO,
   ForgotPasswordDTO,
   LoginDTO,
+  RegisterTenantDTO,
   RegisterUserDTO,
   ResetPasswordDTO,
   SetPasswordDTO,
@@ -26,8 +27,8 @@ export class AuthController {
   };
 
   registerTenantEmail = async (req: Request, res: Response) => {
-    const data = plainToInstance(RegisterUserDTO, req.body);
-    const result = await this.authService.registerUserEmail(data);
+    const data = plainToInstance(RegisterTenantDTO, req.body);
+    const result = await this.authService.registerTenantEmail(data);
     res.status(201).send(result);
   };
 
