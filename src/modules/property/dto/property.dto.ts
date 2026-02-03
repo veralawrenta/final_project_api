@@ -1,8 +1,28 @@
 import { Transform } from "class-transformer";
-import { IsEnum, IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import {
+  IsArray,
+  IsEnum,
+  IsIn,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from "class-validator";
 import { PropertyType } from "../../../../generated/prisma/enums";
 import { PaginationQueryParams } from "../../pagination/dto/pagination.dto";
 import { IsDateOnly } from "../../../validators/is-date-only.validator";
+import { Prisma } from "../../../../generated/prisma/client";
+
+export enum PropertySortBy {
+  NAME = "name",
+  PRICE = "price",
+}
+
+export enum SortOrderEnum {
+  ASC = "asc",
+  DESC = "desc",
+}
 
 export class GetSearchAvailablePropertiesDTO extends PaginationQueryParams {
   @IsNotEmpty()
@@ -26,13 +46,15 @@ export class GetSearchAvailablePropertiesDTO extends PaginationQueryParams {
 
   @IsOptional()
   @IsString()
-  @IsIn(["name", "price"])
-  sortBy: string = "name";
+  @IsEnum(PropertySortBy)
+  sortBy: PropertySortBy = PropertySortBy.PRICE;
 
   @IsOptional()
-  @IsString()
-  @IsIn(["asc", "desc"])
-  sortOrder: string = "asc";
+  @IsEnum(SortOrderEnum)
+  @Transform(
+    ({ value }): Prisma.SortOrder => (value === "desc" ? "desc" : "asc")
+  )
+  sortOrder: Prisma.SortOrder = "asc";
 
   @IsOptional()
   @IsEnum(PropertyType)
@@ -43,91 +65,101 @@ export class GetSearchAvailablePropertiesDTO extends PaginationQueryParams {
   search?: string;
 }
 
-export class GetAllPropertiesDTO extends PaginationQueryParams{
-    @IsOptional()
-    @IsString()
-    search?: string ="";
-};
+export class GetAllPropertiesDTO extends PaginationQueryParams {
+  @IsOptional()
+  @IsString()
+  search?: string = "";
+}
 
 export class GetPropertyAvailabilityQueryDTO {
-  @IsNotEmpty() 
+  @IsNotEmpty()
   @IsDateOnly()
   checkIn!: string;
 
-  @IsNotEmpty() 
+  @IsNotEmpty()
   @IsDateOnly()
   checkOut!: string;
 
-  @IsNotEmpty() 
+  @IsNotEmpty()
   @IsNumber()
   @Transform(({ value }) => Number(value))
   totalGuests!: number;
-};
+}
 
 export class CreatePropertyDTO {
-    @IsNotEmpty()
-    @IsString()
-    name!: string;
-  
-    @IsNotEmpty()
-    @IsString()
-    description!: string;
-  
-    @IsNotEmpty()
-    @IsString()
-    address!: string;
-  
-    @IsNotEmpty()
-    @IsNumber()
-    cityId!: number;
-  
-    @IsOptional()
-    @IsNumber()
-    categoryId?: number;
+  @IsNotEmpty()
+  @IsString()
+  name!: string;
 
-    @IsNotEmpty()
-    @IsEnum(PropertyType)
-    propertyType!: PropertyType;
-  
-    @IsOptional()
-    @IsNumber()
-    latitude?: number;
+  @IsNotEmpty()
+  @IsString()
+  description!: string;
 
-    @IsOptional()
-    @IsNumber()
-    longitude?: number;
-  }
+  @IsNotEmpty()
+  @IsString()
+  address!: string;
+
+  @IsNotEmpty()
+  @IsNumber()
+  cityId!: number;
+
+  @IsOptional()
+  @IsNumber()
+  categoryId?: number;
+
+  @IsNotEmpty()
+  @IsEnum(PropertyType)
+  propertyType!: PropertyType;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  amenities?: string[];
+}
 
 export class UpdatePropertyDTO {
-    @IsOptional()
-    @IsString()
-    name?: string;
-  
-    @IsOptional()
-    @IsString()
-    description?: string;
-  
-    @IsOptional()
-    @IsString()
-    address?: string;
-  
-    @IsOptional()
-    @IsNumber()
-    cityId?: number;
-  
-    @IsOptional()
-    @IsNumber()
-    categoryId?: number;
+  @IsOptional()
+  @IsString()
+  name?: string;
 
-    @IsOptional()
-    @IsEnum(PropertyType)
-    propertyType?: PropertyType;
-  
-    @IsOptional()
-    @IsNumber()
-    latitude?: number;
+  @IsOptional()
+  @IsString()
+  description?: string;
 
-    @IsOptional()
-    @IsNumber()
-    longitude?: number;
-  }
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsNumber()
+  cityId?: number;
+
+  @IsOptional()
+  @IsNumber()
+  categoryId?: number;
+
+  @IsOptional()
+  @IsEnum(PropertyType)
+  propertyType?: PropertyType;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  amenities?: string[];
+}

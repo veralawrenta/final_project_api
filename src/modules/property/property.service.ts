@@ -19,13 +19,16 @@ import {
   GetSearchAvailablePropertiesDTO,
   UpdatePropertyDTO,
 } from "./dto/property.dto";
+import { AmenityService } from "../amenity/amenity.service";
 
 export class PropertyService {
   private prisma: PrismaClient;
+  private amenityService: AmenityService;
   private redis: RedisService;
 
   constructor() {
     this.prisma = prisma;
+    this.amenityService = new AmenityService();
     this.redis = new RedisService();
   }
 
@@ -121,7 +124,7 @@ export class PropertyService {
     const properties = await this.prisma.property.findMany({
       where: whereClause,
       include: {
-        propertyImages: { where: { deletedAt: null } },
+        propertyImages: { where: { deletedAt: null }, take: 1 },
         city: true,
         category: true,
         amenities: { where: { deletedAt: null } },
@@ -150,9 +153,17 @@ export class PropertyService {
               },
             },
           },
-          include: {
-            roomImages: { where: { deletedAt: null } },
-            seasonalRates: { where: { deletedAt: null } },
+          select: {
+            id: true,
+            basePrice: true,
+            seasonalRates: {
+              where: { deletedAt: null },
+              select: {
+                startDate: true,
+                endDate: true,
+                fixedPrice: true,
+              },
+            },
           },
         },
       },
@@ -193,15 +204,20 @@ export class PropertyService {
     }
     const sorted = [...results].sort((a, b) => {
       if (sortBy === "name") {
-        const cmp = a.name.localeCompare(b.name);
-        return sortOrder === "asc" ? cmp : -cmp;
+        return sortOrder === "asc"
+          ? a.name.localeCompare(b.name)
+          : b.name.localeCompare(a.name);
       }
-      const cmp = a.displayPrice - b.displayPrice;
-      return sortOrder === "asc" ? cmp : -cmp;
+      return sortOrder === "asc"
+        ? a.displayPrice - b.displayPrice
+        : b.displayPrice - a.displayPrice;
     });
 
-    const total = sorted.length;
-    const paginated = sorted.slice((page - 1) * take, page * take);
+    const total = results.length;
+    const paginated = results.slice(
+      (page - 1) * take,
+      page * take
+    )
 
     const response = {
       data: paginated,
@@ -473,21 +489,30 @@ export class PropertyService {
         400
       );
     }
-    const createdProperty = await this.prisma.property.create({
-      data: {
-        name: body.name,
-        description: body.description,
-        address: body.address,
-        cityId: body.cityId,
-        categoryId: body.categoryId,
-        propertyType: body.propertyType,
-        latitude: body.latitude,
-        longitude: body.longitude,
-        tenantId,
-        propertyStatus: "DRAFT",
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const createdProperty = await this.prisma.property.create({
+        data: {
+          name: body.name,
+          description: body.description,
+          address: body.address,
+          cityId: body.cityId,
+          categoryId: body.categoryId,
+          propertyType: body.propertyType,
+          latitude: body.latitude,
+          longitude: body.longitude,
+          tenantId,
+          propertyStatus: "DRAFT",
+        },
+      });
+      if (body.amenities && body.amenities.length > 0) {
+        await this.amenityService.syncAmenities(
+          tx,
+          createdProperty.id,
+          body.amenities
+        );
+      }
+      return createdProperty;
     });
-    return createdProperty;
   };
 
   checkPropertyPublishability = async (id: number, tenantId: number) => {
@@ -588,7 +613,7 @@ export class PropertyService {
     body: Partial<UpdatePropertyDTO>
   ) => {
     const property = await this.prisma.property.findFirst({
-      where: { id, propertyStatus: "PUBLISHED", deletedAt: null },
+      where: { id, propertyStatus: PropertyStatus.PUBLISHED, deletedAt: null },
       include: {
         propertyImages: true,
         tenant: true,
@@ -638,26 +663,31 @@ export class PropertyService {
         );
       }
     }
+    return this.prisma.$transaction(async (tx) => {
+      const propertyData: any = {};
 
-    const propertyData: any = {};
+      if (body.name !== undefined) propertyData.name = body.name;
+      if (body.description !== undefined)
+        propertyData.description = body.description;
+      if (body.address !== undefined) propertyData.address = body.address;
+      if (body.propertyType !== undefined)
+        propertyData.propertyType = body.propertyType;
+      if (body.cityId !== undefined) propertyData.cityId = body.cityId;
+      if (body.categoryId !== undefined)
+        propertyData.categoryId = body.categoryId;
+      if (body.latitude !== undefined) propertyData.latitude = body.latitude;
+      if (body.longitude !== undefined) propertyData.longitude = body.longitude;
 
-    if (body.name !== undefined) propertyData.name = body.name;
-    if (body.description !== undefined)
-      propertyData.description = body.description;
-    if (body.address !== undefined) propertyData.address = body.address;
-    if (body.propertyType !== undefined)
-      propertyData.propertyType = body.propertyType;
-    if (body.cityId !== undefined) propertyData.cityId = body.cityId;
-    if (body.categoryId !== undefined)
-      propertyData.categoryId = body.categoryId;
-    if (body.latitude !== undefined) propertyData.latitude = body.latitude;
-    if (body.longitude !== undefined) propertyData.longitude = body.longitude;
+      const updatedProperty = await this.prisma.property.update({
+        where: { id },
+        data: propertyData,
+      });
 
-    const updatedProperty = await this.prisma.property.update({
-      where: { id },
-      data: propertyData,
+      if (body.amenities && body.amenities.length > 0) {
+        await this.amenityService.syncAmenities(tx, id, body.amenities);
+      }
+      return updatedProperty;
     });
-    return updatedProperty;
   };
 
   deletePropertyById = async (id: number, tenantId: number) => {
@@ -717,6 +747,15 @@ export class PropertyService {
     const deletedProperty = await this.prisma.$transaction([
       this.prisma.property.update({
         where: { id },
+        data: {
+          deletedAt: new Date(),
+        },
+      }),
+      this.prisma.amenity.updateMany({
+        where: {
+          propertyId: id,
+          deletedAt: null,
+        },
         data: {
           deletedAt: new Date(),
         },

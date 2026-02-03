@@ -66,10 +66,10 @@ model User {
   provider Provider
   password String?
 
-  address  String?
-  avatar String?
-  aboutMe  String? @db.Text
-  phone    String?
+  address String?
+  avatar  String?
+  aboutMe String? @db.Text
+  phone   String?
 
   role       Role    @default(USER)
   isVerified Boolean @default(false)
@@ -122,8 +122,8 @@ model Property {
   category   Category? @relation(fields: [categoryId], references: [id])
 
   propertyStatus PropertyStatus @default(DRAFT)
-  propertyType PropertyType
-  address      String?
+  propertyType   PropertyType
+  address        String?
 
   cityId Int
   city   City @relation(fields: [cityId], references: [id])
@@ -160,11 +160,12 @@ model City {
 }
 
 model Amenity {
-  id   Int    @id @default(autoincrement())
+  id   Int     @id @default(autoincrement())
   name String
+  code String?
 
-  propertyId Int
-  property   Property @relation(fields: [propertyId], references: [id])
+  propertyId Int?
+  property   Property? @relation(fields: [propertyId], references: [id])
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -196,8 +197,8 @@ model Room {
   basePrice   Int
   totalGuests Int
   description String @db.Text
-  totalUnits   Int
-  
+  totalUnits  Int
+
   propertyId Int
   property   Property @relation(fields: [propertyId], references: [id])
 
@@ -215,10 +216,10 @@ model Room {
 }
 
 model RoomImage {
-  id     Int @id @default(autoincrement())
+  id     Int  @id @default(autoincrement())
   roomId Int
-  room     Room    @relation(fields: [roomId], references: [id])
-  
+  room   Room @relation(fields: [roomId], references: [id])
+
   urlImages String
   isCover   Boolean @default(false)
 
@@ -237,7 +238,7 @@ model RoomNonAvailability {
   startDate     DateTime
   endDate       DateTime
   reason        String?
-  roomInventory Int
+  roomInventory Int?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -260,7 +261,7 @@ model SeasonalRate {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
-  
+
   property   Property? @relation(fields: [propertyId], references: [id])
   propertyId Int?
 

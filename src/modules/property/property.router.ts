@@ -119,13 +119,6 @@ export class PropertyRouter {
       this.roleMiddleware.requirePropertyOwnership,
       this.propertyController.deleteProperty
     );
-    this.router.post(
-      "/:id/amenities",
-      this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
-      this.roleMiddleware.requireRoles("TENANT"),
-      this.roleMiddleware.requirePropertyOwnership,
-      this.amenityController.createAmenity
-    );
   };
   getRouter = () => {
     return this.router;
