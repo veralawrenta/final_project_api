@@ -9,7 +9,13 @@ export class CityController {
   }
 
   getAllCities = async (req: Request, res: Response) => {
-    const cities = await this.cityService.getAllCities();
-    return cities;
+    try {
+      const { search } = req.query;
+      const cities = await this.cityService.getAllCities(search as string);
+      return res.status(200).json(cities);
+    } catch (error) {
+      console.error('Error fetching cities:', error);
+      return res.status(500).json({ error: 'Failed to fetch cities' });
+    }
   };
 }

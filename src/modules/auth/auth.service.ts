@@ -72,13 +72,13 @@ export class AuthService {
   };
 
   registerTenantEmail = async (body: RegisterTenantDTO) => {
+    console.log("REGISTER TENANT INPUT:", body);
     const currentUser = await this.prisma.user.findUnique({
       where: { email: body.email },
     });
     if (currentUser) {
       throw new ApiError("email already exist", 400);
     }
-
     const user = await this.prisma.user.create({
       data: {
         email: body.email,
@@ -91,6 +91,12 @@ export class AuthService {
           },
         },
       },
+    });
+
+    console.log("CREATED USER:", {
+      id: user.id,
+      email: user.email,
+      role: user.role,
     });
 
     const payload = { id: user.id, role: user.role };

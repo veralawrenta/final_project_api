@@ -45,7 +45,7 @@ export class PropertyService {
   };
 
   getAllProperties = async (query: GetAllPropertiesDTO) => {
-    const { page, take, sortBy, sortOrder, search } = query;
+    const { page, take, sortBy, sortOrder, search, propertyType } = query;
 
     const whereClause: Prisma.PropertyWhereInput = {
       propertyStatus: PropertyStatus.PUBLISHED,
@@ -55,6 +55,18 @@ export class PropertyService {
     if (search) {
       whereClause.name = { contains: search, mode: "insensitive" };
     }
+
+    if (propertyType) {
+      whereClause.propertyType = propertyType;
+    }
+
+    let orderBy: any;
+    if (sortBy === "price") {
+      orderBy = { name: sortOrder };
+    } else {
+      orderBy = { [sortBy]: sortOrder }
+    }
+
     const properties = await this.prisma.property.findMany({
       where: whereClause,
       orderBy: { [sortBy]: sortOrder },
@@ -62,22 +74,43 @@ export class PropertyService {
       take: take,
       include: {
         propertyImages: true,
-        amenities: true,
+        amenities: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
         category: true,
         rooms: {
-          include: {
-            seasonalRates: true,
-            roomImages: true,
-            roomNonAvailability: true,
+          where : { deletedAt: null },
+          select: {
+            id: true,
+            basePrice: true,
+            totalGuests: true,
+            totalUnits: true,
           },
         },
       },
     });
+    // calculating displayPrice for each property
+    const propertiesWithPrice = properties.map((property) => {
+      const displayPrice = property.rooms.length > 0 ? Math.min(...property.rooms.map((r)=> r.basePrice)) : 0
+    return {
+      ...property,
+      displayPrice,
+    };
+    });
+
+    let sortedProperties = propertiesWithPrice;
+    if (sortBy === "price") {
+      sortedProperties = propertiesWithPrice.sort((a , b) => { return sortOrder === "asc" ? a.displayPrice - b.displayPrice : b.displayPrice - a.displayPrice});
+    };
     const count = await this.prisma.property.count({
       where: whereClause,
     });
     return {
-      data: properties,
+      data: sortedProperties,
       meta: { page, take, total: count },
     };
   };
@@ -127,7 +160,8 @@ export class PropertyService {
         propertyImages: { where: { deletedAt: null }, take: 1 },
         city: true,
         category: true,
-        amenities: { where: { deletedAt: null } },
+        tenant: true,
+        amenities: { where: { deletedAt: null }, select: { id: true, name: true, code: true } },
         rooms: {
           where: {
             deletedAt: null,
@@ -214,10 +248,7 @@ export class PropertyService {
     });
 
     const total = results.length;
-    const paginated = results.slice(
-      (page - 1) * take,
-      page * take
-    )
+    const paginated = results.slice((page - 1) * take, page * take);
 
     const response = {
       data: paginated,
@@ -246,7 +277,7 @@ export class PropertyService {
       where: { id, propertyStatus: PropertyStatus.PUBLISHED, deletedAt: null },
       include: {
         propertyImages: { where: { deletedAt: null } },
-        amenities: { where: { deletedAt: null } },
+        amenities: { where: { deletedAt: null }, select: { id: true, name: true, code: true } },
         city: true,
         category: true,
         tenant: true,
@@ -345,7 +376,7 @@ export class PropertyService {
         category: true,
         city: true,
         propertyImages: true,
-        amenities: true,
+        amenities: {select: { id: true, name: true, code: true }},
         rooms: {
           include: {
             seasonalRates: true,

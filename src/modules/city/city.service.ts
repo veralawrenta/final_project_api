@@ -8,8 +8,20 @@ export class CityService {
       this.prisma = prisma;
     }
 
-    getAllCities = async () => {
-      const cities = await this.prisma.city.findMany({});
+    getAllCities = async (search?: string) => {
+      const cities = await this.prisma.city.findMany({
+        where: search
+          ? {
+              name: {
+                contains: search,
+                mode: 'insensitive',
+              },
+            }
+          : {},
+        orderBy: {
+          name: 'asc',
+        },
+      });
       return cities;
     };
 }
