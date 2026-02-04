@@ -47,6 +47,7 @@ export class PropertyRouter {
       this.propertyController.getSearchAvailableProperties
     );
     this.router.get("/public", this.propertyController.getAllProperties);
+    this.router.get("/:propertyId/rooms", this.roomController.getAvailableRooms)
     this.router.get(
       "/",
       this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),
@@ -66,9 +67,9 @@ export class PropertyRouter {
       "/",
       this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
-      this.propertyController.createProperty
+      this.propertyController.createPropertyFlow
     );
-    this.router.get(
+    /*this.router.get(
       "/:id/publishability",
       this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
@@ -85,7 +86,7 @@ export class PropertyRouter {
       this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
       this.propertyController.unpublishProperty
-    );
+    );*/
     this.router.post(
       "/:id/property-images",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),

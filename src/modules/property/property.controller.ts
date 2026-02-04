@@ -3,6 +3,7 @@ import { PropertyService } from "./property.service";
 import { plainToInstance } from "class-transformer";
 import {
   CreatePropertyDTO,
+  CreatePropertyFlowDTO,
   GetAllPropertiesDTO,
   GetPropertyAvailabilityQueryDTO,
   GetSearchAvailablePropertiesDTO,
@@ -61,7 +62,14 @@ export class PropertyController {
     return res.status(200).send(result);
   };
 
-  createProperty = async (req: Request, res: Response) => {
+  createPropertyFlow =  async (req: Request, res: Response) => {
+    const authUserId = Number(res.locals.user.id);
+    const data = plainToInstance(CreatePropertyFlowDTO, req.body);
+    const result = await this.propertyService.createPropertyFlow(authUserId, data);
+    return res.status(201).send(result);
+  }
+
+  /*createProperty = async (req: Request, res: Response) => {
     const tenantId = Number(res.locals.user.tenant.id);
     const data = plainToInstance(CreatePropertyDTO, req.body);
     const result = await this.propertyService.createProperty(tenantId, data);
@@ -90,7 +98,7 @@ export class PropertyController {
     const id = Number(req.params.id);
     const result = await this.propertyService.unpublishProperty(id, tenantId);
     return res.status(200).send(result);
-  };
+  };*/
 
   updateProperty = async (req: Request, res: Response) => {
     const id = Number(req.params.id);

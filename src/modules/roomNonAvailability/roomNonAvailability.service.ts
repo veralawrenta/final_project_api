@@ -1,10 +1,7 @@
 import { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import {
-  getTodayDateOnly,
-  formattedDate,
-} from "../../utils/date.utils";
+import { getTodayDateOnly, formattedDate } from "../../utils/date.utils";
 import { RedisService } from "../redis/redis.service";
 import { PaginationQueryParams } from "../pagination/dto/pagination.dto";
 import {
@@ -46,25 +43,22 @@ export class RoomNonAvailabilityService {
     const today = getTodayDateOnly();
 
     if (startDate < today || endDate < today) {
-      throw new ApiError(
-        "Start date and end date cannot be in the past",
-        400
-      );
-    };
+      throw new ApiError("Start date and end date cannot be in the past", 400);
+    }
     if (startDate == null || endDate == null) {
       throw new ApiError("Invalid date format", 400);
-    };
+    }
     if (startDate >= endDate) {
       throw new ApiError("End date must be after start Date", 400);
-    };
+    }
 
     if (body.roomInventory <= 0) {
       throw new ApiError("Room inventory must be greater than zero", 400);
-    };
+    }
     if (body.roomInventory > room.totalUnits) {
       throw new ApiError("Maintenance block exceeds the total units", 400);
-    };
-  
+    }
+
     const overlapNonAvailability =
       await this.prisma.roomNonAvailability.findFirst({
         where: {
@@ -115,18 +109,21 @@ export class RoomNonAvailabilityService {
       ? formattedDate(body.endDate)
       : maintenanceBlock.endDate;
 
-    const roomInventory = body.roomInventory ?? maintenanceBlock.roomInventory;
+    const roomInventory =
+      body.roomInventory ??
+      maintenanceBlock.roomInventory ??
+      maintenanceBlock.room.totalUnits;
 
     if (startDate >= endDate) {
       throw new ApiError("End date must be after start Date", 400);
-    };
+    }
 
     if (roomInventory <= 0) {
       throw new ApiError("Room inventory must be greater than zero", 400);
-    };
+    }
     if (roomInventory > maintenanceBlock.room.totalUnits) {
       throw new ApiError("Maintenance block exceeds the total units", 400);
-    };
+    }
 
     const overlapMaintenance = await this.prisma.roomNonAvailability.findFirst({
       where: {
@@ -143,7 +140,7 @@ export class RoomNonAvailabilityService {
         "Maintenance already schedule for this date range",
         400
       );
-    };
+    }
     const updatedRoomNonAvailability =
       await this.prisma.roomNonAvailability.update({
         where: { id },
@@ -201,7 +198,9 @@ export class RoomNonAvailabilityService {
       },
     };
 
-    if (search) { whereClause.reason = { contains: search, mode: "insensitive" }};
+    if (search) {
+      whereClause.reason = { contains: search, mode: "insensitive" };
+    }
 
     const maintenances = await this.prisma.roomNonAvailability.findMany({
       where: whereClause,

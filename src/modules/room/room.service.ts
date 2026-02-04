@@ -1,7 +1,7 @@
-import { Prisma, PrismaClient } from "../../../generated/prisma/client";
+import { Prisma, PrismaClient, PropertyStatus } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import { PaginationQueryParams } from "../pagination/dto/pagination.dto";
+import { formattedDate } from "../../utils/date.utils";
 import { CreateRoomDTO, GetAllRoomsDTO, UpdateRoomDTO } from "./dto/room.dto";
 
 export class RoomService {
@@ -9,7 +9,99 @@ export class RoomService {
 
   constructor() {
     this.prisma = prisma;
+  };
+
+getAllAvailableRooms = async (
+  propertyId: number,
+  checkIn?: string,
+  checkOut?: string
+) => {
+
+  const rooms = await this.prisma.room.findMany({
+    where: {
+      propertyId,
+      deletedAt: null,
+      property: {
+        propertyStatus: PropertyStatus.PUBLISHED
+      },
+    },
+    include: {
+      roomImages: true,
+      roomNonAvailability: true,
+      seasonalRates: true,
+      transactions: {
+        where: {
+          status: {
+            in: ["WAITING_FOR_PAYMENT", "WAITING_FOR_CONFIRMATION", "CONFIRMED"],
+          },
+        },
+      },
+    },
+  });
+
+  if (!checkIn || !checkOut) {
+    return rooms.map((room) => ({
+      id: room.id,
+      name: room.name,
+      basePrice: room.basePrice,
+      displayPrice: room.basePrice,
+      totalGuests: room.totalGuests,
+      roomImages: room.roomImages,
+      isAvailable: true,
+    }));
   }
+
+  const checkInDate = formattedDate(checkIn);
+  const checkOutDate = formattedDate(checkOut);
+  return rooms.map((room) => {
+    let isAvailable = true;
+    let displayPrice = room.basePrice;
+
+    for (const booking of room.transactions) {
+      const bookingStart = new Date(booking.checkIn);
+      const bookingEnd = new Date(booking.checkOut);
+      
+      if (checkInDate < bookingEnd && checkOutDate > bookingStart) {
+        isAvailable = false;
+        break;
+      }
+    }
+    if (isAvailable) {
+      for (const block of room.roomNonAvailability) {
+        const blockStart = new Date(block.startDate);
+        const blockEnd = new Date(block.endDate);
+        
+        if (checkInDate < blockEnd && checkOutDate > blockStart) {
+          isAvailable = false;
+          break;
+        }
+      }
+    }
+    for (const seasonal of room.seasonalRates) {
+      const seasonStart = new Date(seasonal.startDate);
+      const seasonEnd = new Date(seasonal.endDate);
+      
+      if (checkInDate < seasonEnd && checkOutDate > seasonStart) {
+        displayPrice = seasonal.fixedPrice;
+        break;
+      }
+    }
+
+    return {
+      id: room.id,
+      name: room.name,
+      basePrice: room.basePrice,
+      displayPrice: displayPrice,
+      totalGuests: room.totalGuests,
+      isAvailable: isAvailable,
+      roomImages: room.roomImages.map((img) => ({
+        imageUrl: img.urlImages,
+        isCover: img.isCover,
+      })),
+    };
+  });
+};
+  
 
   getAllRoomsByProperty = async (tenantId: number, propertyId: number) => {
     const property = await this.prisma.property.findFirst({
@@ -26,9 +118,14 @@ export class RoomService {
         roomImages: true,
         roomNonAvailability: true,
         seasonalRates: true,
+        transactions: {
+          select: {
+            checkIn: true,
+            checkOut: true,
+          },
+        },
       },
     });
-    return rooms;
   };
 
   getAllRoomsByTenant = async (
@@ -89,7 +186,7 @@ export class RoomService {
     });
     if (!property) {
       throw new ApiError("Property not found ", 404);
-    }
+    };
 
     const existingRoom = await this.prisma.room.findFirst({
       where: { name: body.name, propertyId: propertyId, deletedAt: null },

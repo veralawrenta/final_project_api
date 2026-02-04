@@ -1,18 +1,20 @@
-import { Transform } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsArray,
   IsEnum,
-  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   Min,
+  ValidateNested
 } from "class-validator";
-import { PropertyType } from "../../../../generated/prisma/enums";
-import { PaginationQueryParams } from "../../pagination/dto/pagination.dto";
-import { IsDateOnly } from "../../../validators/is-date-only.validator";
 import { Prisma } from "../../../../generated/prisma/client";
+import { PropertyType } from "../../../../generated/prisma/enums";
+import { IsDateOnly } from "../../../validators/is-date-only.validator";
+import { PaginationQueryParams } from "../../pagination/dto/pagination.dto";
+import { CreatePropertyImageDTO } from "../../propertyImage/dto/propertyImage.dto";
+import { CreateRoomFlowDTO } from "../../room/dto/room.dto";
 
 export enum PropertySortBy {
   NAME = "name",
@@ -127,6 +129,20 @@ export class CreatePropertyDTO {
   @IsArray()
   @IsString({ each: true })
   amenities?: string[];
+}
+
+export class CreatePropertyFlowDTO extends CreatePropertyDTO {
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreatePropertyImageDTO)
+  propertyImages?: CreatePropertyImageDTO[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateRoomFlowDTO)
+  rooms?: CreateRoomFlowDTO[];
 }
 
 export class UpdatePropertyDTO {

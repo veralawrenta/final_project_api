@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from "../../../generated/prisma/client";
+import { Prisma, PrismaClient, PropertyStatus } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
 import {
@@ -38,11 +38,11 @@ export class SeasonalRatesService {
 
     if (startDate > endDate) {
       throw new ApiError("Invalid date range", 400);
-    }
+    };
 
     if (body.fixedPrice <= 0) {
       throw new ApiError("Fixed price must be greater than 0", 400);
-    }
+    };
 
     const created = await this.prisma.$transaction(async (tx) => {
       const room = await this.prisma.room.findFirst({
@@ -51,7 +51,9 @@ export class SeasonalRatesService {
       });
       if (!room) {
         throw new ApiError("Room not found", 404);
-      }
+      };
+
+      if (room.property.propertyStatus !== PropertyStatus.PUBLISHED) {throw new ApiError ("You cannot apply seasonal for unpublished property", 400)}
 
       const overlapRate = await this.prisma.seasonalRate.findFirst({
         where: {

@@ -138,12 +138,45 @@ model Property {
   propertyImages PropertyImage[]
   seasonalRates  SeasonalRate[]
   rooms          Room[]
-  amenities      Amenity[]
+  amenities      PropertyAmenity[]
 
   @@index([tenantId])
   @@index([categoryId])
   @@index([cityId])
   @@map("properties")
+}
+
+model Amenity {
+  id   Int     @id @default(autoincrement())
+  name String  @unique
+  code String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  properties PropertyAmenity[]
+
+  @@map("amenities")
+}
+
+model PropertyAmenity {
+  id Int @id @default(autoincrement())
+
+  propertyId Int
+  amenityId  Int
+
+  property Property @relation(fields: [propertyId], references: [id])
+  amenity  Amenity  @relation(fields: [amenityId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([propertyId, amenityId])
+  @@index([propertyId])
+  @@index([amenityId])
+  @@map("propertyAmenities")
 }
 
 model City {
@@ -157,22 +190,6 @@ model City {
   properties Property[]
 
   @@map("cities")
-}
-
-model Amenity {
-  id   Int     @id @default(autoincrement())
-  name String
-  code String?
-
-  propertyId Int?
-  property   Property? @relation(fields: [propertyId], references: [id])
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@unique([propertyId, name])
-  @@map("amenities")
 }
 
 model PropertyImage {

@@ -10,6 +10,17 @@ export class RoomController {
     this.roomService = new RoomService();
   }
 
+  getAvailableRooms = async (req: Request, res: Response) => {
+    const propertyId = Number(req.params.propertyId);
+    const { checkIn, checkOut } = req.query;
+    const rooms = await this.roomService.getAllAvailableRooms(
+      propertyId, 
+      checkIn as string, 
+      checkOut as string
+    );
+    return res.status(200).send(rooms);
+  };
+
   getAllRoomsByProperty = async (req: Request, res: Response) => {
     const tenantId = Number(res.locals.user.tenant.id);
     const propertyId = Number(req.params.propertyId);
@@ -29,10 +40,10 @@ export class RoomController {
 
   getRoomById = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
-    const result = await this.roomService.getRoomId(id);;
+    const result = await this.roomService.getRoomId(id);
     return res.status(200).send(result);
   };
-  
+
   createRoom = async (req: Request, res: Response) => {
     const tenantId = Number(res.locals.user.tenant.id);
     const propertyId = Number(req.params.propertyId);

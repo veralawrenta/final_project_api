@@ -22,4 +22,13 @@ export const toDateOnlyString = (date: Date): string => {
   return formatInTimeZone(date, PROPERTY_TIMEZONE, "yyyy-MM-dd");
 };
 
+export const isOverlapping = (
+  startA: Date,
+  endA: Date,
+  startB: Date,
+  endB: Date
+) => {
+  return startA < endB && endA > startB;
+};
+
 

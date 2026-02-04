@@ -1,42 +1,42 @@
 import "dotenv/config";
-import { prisma } from "../src/lib/prisma"; // 👈 your adapter-based client
+import { prisma } from "../src/lib/prisma";
 import { amenitiesSeed } from "./seeds/amenities";
 import { citiesSeed } from "./seeds/cities";
 
 async function main() {
   console.log("🌱 Seeding database...");
 
-  // ---- Cities ----
   await prisma.city.createMany({
     data: citiesSeed,
     skipDuplicates: true,
   });
 
+  await prisma.city.updateMany({
+    where: {
+      name: { in: citiesSeed.map((c) => c.name) },
+      deletedAt: { not: null },
+    },
+    data: { deletedAt: null },
+  });
+
   console.log("✅ Cities seeded");
 
-  // ---- Amenities ----
-  for (const amenity of amenitiesSeed) {
-    const existing = await prisma.amenity.findFirst({
-      where: {
-        name: amenity.name,
-        propertyId: null,
-      },
-    });
+  await prisma.amenity.createMany({
+    data: amenitiesSeed,
+    skipDuplicates: true,
+  });
 
-    if (!existing) {
-      await prisma.amenity.create({
+  await prisma.$transaction(
+    amenitiesSeed.map((amenity) =>
+      prisma.amenity.updateMany({
+        where: { name: amenity.name },
         data: {
-          name: amenity.name,
           code: amenity.code,
+          deletedAt: null,
         },
-      });
-    } else if (existing.code !== amenity.code) {
-      await prisma.amenity.update({
-        where: { id: existing.id },
-        data: { code: amenity.code },
-      });
-    }
-  }
+      })
+    )
+  );
 
   console.log("✅ Amenities seeded");
 }

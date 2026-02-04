@@ -14,6 +14,7 @@ import { RedisService } from "../redis/redis.service";
 import crypto from "node:crypto";
 import {
   CreatePropertyDTO,
+  CreatePropertyFlowDTO,
   GetAllPropertiesDTO,
   GetPropertyAvailabilityQueryDTO,
   GetSearchAvailablePropertiesDTO,
@@ -64,7 +65,7 @@ export class PropertyService {
     if (sortBy === "price") {
       orderBy = { name: sortOrder };
     } else {
-      orderBy = { [sortBy]: sortOrder }
+      orderBy = { [sortBy]: sortOrder };
     }
 
     const properties = await this.prisma.property.findMany({
@@ -83,7 +84,7 @@ export class PropertyService {
         },
         category: true,
         rooms: {
-          where : { deletedAt: null },
+          where: { deletedAt: null },
           select: {
             id: true,
             basePrice: true,
@@ -95,17 +96,24 @@ export class PropertyService {
     });
     // calculating displayPrice for each property
     const propertiesWithPrice = properties.map((property) => {
-      const displayPrice = property.rooms.length > 0 ? Math.min(...property.rooms.map((r)=> r.basePrice)) : 0
-    return {
-      ...property,
-      displayPrice,
-    };
+      const displayPrice =
+        property.rooms.length > 0
+          ? Math.min(...property.rooms.map((r) => r.basePrice))
+          : 0;
+      return {
+        ...property,
+        displayPrice,
+      };
     });
 
     let sortedProperties = propertiesWithPrice;
     if (sortBy === "price") {
-      sortedProperties = propertiesWithPrice.sort((a , b) => { return sortOrder === "asc" ? a.displayPrice - b.displayPrice : b.displayPrice - a.displayPrice});
-    };
+      sortedProperties = propertiesWithPrice.sort((a, b) => {
+        return sortOrder === "asc"
+          ? a.displayPrice - b.displayPrice
+          : b.displayPrice - a.displayPrice;
+      });
+    }
     const count = await this.prisma.property.count({
       where: whereClause,
     });
@@ -161,7 +169,10 @@ export class PropertyService {
         city: true,
         category: true,
         tenant: true,
-        amenities: { where: { deletedAt: null }, select: { id: true, name: true, code: true } },
+        amenities: {
+          where: { deletedAt: null },
+          select: { id: true, name: true, code: true },
+        },
         rooms: {
           where: {
             deletedAt: null,
@@ -277,7 +288,10 @@ export class PropertyService {
       where: { id, propertyStatus: PropertyStatus.PUBLISHED, deletedAt: null },
       include: {
         propertyImages: { where: { deletedAt: null } },
-        amenities: { where: { deletedAt: null }, select: { id: true, name: true, code: true } },
+        amenities: {
+          where: { deletedAt: null },
+          select: { id: true, name: true, code: true },
+        },
         city: true,
         category: true,
         tenant: true,
@@ -376,7 +390,7 @@ export class PropertyService {
         category: true,
         city: true,
         propertyImages: true,
-        amenities: {select: { id: true, name: true, code: true }},
+        amenities: { select: { id: true, name: true, code: true } },
         rooms: {
           include: {
             seasonalRates: true,
@@ -402,15 +416,15 @@ export class PropertyService {
 
   get30DayPropertyCalendar = async (
     propertyId: number,
-    startDateStr?: string
+    startDates?: string
   ) => {
-    const startKey = startDateStr ?? toDateOnlyString(getTodayDateOnly());
+    const startKey = startDates ?? toDateOnlyString(getTodayDateOnly());
     const cacheKey = `property:calendar30:${propertyId}:${startKey}`;
     const cached = await this.redis.getValue(cacheKey);
     if (cached) return JSON.parse(cached);
 
-    const startDate = startDateStr
-      ? formattedDate(startDateStr)
+    const startDate = startDates
+      ? formattedDate(startDates)
       : getTodayDateOnly();
 
     const property = await this.prisma.property.findUnique({
@@ -499,7 +513,7 @@ export class PropertyService {
     return response;
   };
 
-  createProperty = async (tenantId: number, body: CreatePropertyDTO) => {
+  /*createProperty = async (tenantId: number, body: CreatePropertyDTO) => {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
     });
@@ -619,9 +633,161 @@ export class PropertyService {
     });
 
     return updatedProperty;
+  };*/
+
+  createPropertyFlow = async (
+    authUserId: number,
+    body: CreatePropertyFlowDTO
+  ) => {
+    return await this.prisma.$transaction(async (tx) => {
+      const tenant = await this.prisma.tenant.findFirst({
+        where: { userId: authUserId, deletedAt: null },
+      });
+
+      if (!tenant) {
+        throw new ApiError(
+          "Tenant not found. Please register as a tenant first",
+          404
+        );
+      }
+
+      const existingProperty = await prisma.property.findFirst({
+        where: {
+          tenantId: tenant.id,
+          name: body.name,
+          address: body.address,
+          cityId: body.cityId,
+          deletedAt: null,
+        },
+      });
+
+      if (existingProperty) {
+        throw new ApiError(
+          "Property with the same name and this address already exist in this city",
+          409
+        );
+      }
+      const city = await tx.city.findUnique({
+        where: { id: body.cityId, deletedAt: null },
+      });
+      if (!city) {
+        throw new ApiError("City not found", 404);
+      }
+
+      if (body.categoryId) {
+        const category = await tx.category.findFirst({
+          where: {
+            id: body.categoryId,
+            tenantId: tenant.id,
+            deletedAt: null,
+          },
+        });
+        if (!category) {
+          throw new ApiError(
+            "Category not found or does not belong to this tenant",
+            404
+          );
+        }
+      }
+      const hasPropertyImages =
+        body.propertyImages && body.propertyImages.length > 0;
+      const hasAmenities = body.amenities && body.amenities.length > 0;
+      const hasRooms = body.rooms && body.rooms.length > 0;
+
+      const allRoomsHaveImages = hasRooms
+        ? body.rooms!.every(
+            (room) => room.roomImages && room.roomImages.length > 0
+          )
+        : false;
+
+      const isComplete =
+        hasPropertyImages && hasAmenities && hasRooms && allRoomsHaveImages;
+      const propertyStatus = isComplete
+        ? PropertyStatus.PUBLISHED
+        : PropertyStatus.DRAFT;
+
+      const createdProperty = await this.prisma.property.create({
+        data: {
+          name: body.name,
+          description: body.name,
+          categoryId: body.categoryId,
+          cityId: body.cityId,
+          propertyType: body.propertyType,
+          latitude: body.latitude,
+          longitude: body.longitude,
+          tenantId: tenant.id,
+          propertyStatus: propertyStatus,
+        },
+      });
+      if (hasPropertyImages) {
+        await tx.propertyImage.createMany({
+          data: body.propertyImages!.map((img, index) => ({
+            propertyId: createdProperty.id,
+            urlImages: img.urlImages,
+            isCover: img.isCover ?? index === 0,
+          })),
+        });
+      }
+      if (hasAmenities) {
+        await this.amenityService.syncAmenities(
+          tx,
+          createdProperty.id,
+          body.amenities!
+        );
+      };
+      if (hasRooms) {
+        for (const roomData of body.rooms!) {
+          const createdRoom = await tx.room.create({
+            data: {
+              name: roomData.name,
+              basePrice: roomData.basePrice,
+              totalGuests: roomData.totalGuests,
+              description: roomData.description,
+              totalUnits: roomData.totalUnits,
+              propertyId: createdProperty.id,
+            },
+          });
+          if (roomData.roomImages && roomData.roomImages.length > 0) {
+            await tx.roomImage.createMany({
+              data: roomData.roomImages.map((img, index) => ({
+                roomId: createdRoom.id,
+                urlImages: img.urlImages,
+                isCover: img.isCover ?? index === 0,
+              })),
+            });
+          }
+        }
+      }
+      return await tx.property.findUnique({
+        where: { id: createdProperty.id },
+        include: {
+          propertyImages: true,
+          amenities: true,
+          rooms: {
+            include: {
+              roomImages: true,
+            },
+          },
+          category: true,
+          city: true,
+          tenant: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      });
+    });
   };
 
-  unpublishProperty = async (id: number, tenantId: number) => {
+  /*unpublishProperty = async (id: number, tenantId: number) => {
     const property = await this.prisma.property.findFirst({
       where: { id, tenantId, deletedAt: null },
     });
@@ -636,7 +802,7 @@ export class PropertyService {
     });
 
     return updatedProperty;
-  };
+  };*/
 
   updatePublishedPropertyById = async (
     id: number,
