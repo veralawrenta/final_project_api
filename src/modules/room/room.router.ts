@@ -34,10 +34,13 @@ export class RoomRouter {
     );
     this.router.get("/:id", this.roomController.getRoomById);
     this.router.post(
-      "/:id/rooms",
+      "/property/:propertyId",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
       this.roleMiddleware.requirePropertyOwnership,
+      this.uploaderMiddleware
+        .upload()
+        .fields([{ name: "urlImages", maxCount: 10 }]),
       validateBody(CreateRoomDTO),
       this.roomController.createRoom
     );
@@ -45,6 +48,7 @@ export class RoomRouter {
       "/:id",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
+      this.roleMiddleware.requireRoomOwnership,
       validateBody(UpdateRoomDTO),
       this.roomController.updateRoom
     );
@@ -52,6 +56,7 @@ export class RoomRouter {
       "/:id",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
+      this.roleMiddleware.requireRoomOwnership,
       this.roomController.deleteRoom
     );
   };

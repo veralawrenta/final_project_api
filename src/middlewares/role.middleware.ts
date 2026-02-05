@@ -47,4 +47,33 @@ export class RoleMiddleware {
       next(error);
     }
   };
+  requireRoomOwnership = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const tenantId = Number(res.locals.user.tenant.id);
+      const roomId = Number(req.params.id || req.params.roomId);
+  
+      const room = await prisma.room.findFirst({
+        where: { id: roomId, deletedAt: null },
+        include: {
+          property: true,
+        },
+      });
+  
+      if (!room) {
+        throw new ApiError("Room not found", 404);
+      }
+  
+      if (room.property.tenantId !== tenantId) {
+        throw new ApiError("Forbidden: You don't own this room", 403);
+      }
+  
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
 }

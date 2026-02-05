@@ -27,7 +27,7 @@ export class PropertyImagesRouter {
       this.propertyImagesController.getAllPropertyImagesByProperty
     );
     this.router.post(
-      "/:id/property-images",
+      "/property/:propertyId",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
       this.roleMiddleware.requirePropertyOwnership,

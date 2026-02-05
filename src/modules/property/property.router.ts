@@ -14,6 +14,7 @@ import {
   UpdatePropertyDTO,
 } from "./dto/property.dto";
 import { PropertyController } from "./property.controller";
+import { UploaderMiddleware } from "../../middlewares/uploader.middleware";
 
 export class PropertyRouter {
   router: Router;
@@ -21,6 +22,7 @@ export class PropertyRouter {
   propertyImagesController: PropertyImagesController;
   jwtMiddleware: JWTMiddleware;
   roleMiddleware: RoleMiddleware;
+  uploaderMiddleware: UploaderMiddleware;
 
   constructor() {
     this.router = Router();
@@ -28,6 +30,7 @@ export class PropertyRouter {
     this.propertyImagesController = new PropertyImagesController();
     this.jwtMiddleware = new JWTMiddleware();
     this.roleMiddleware = new RoleMiddleware();
+    this.uploaderMiddleware = new UploaderMiddleware();
     this.initializedRoutes();
   }
 
@@ -49,6 +52,8 @@ export class PropertyRouter {
       validateQuery(GetPropertyAvailabilityQueryDTO),
       this.propertyController.getPropertyByIdWithAvailability
     );
+    this.router.get("/public/:id", this.propertyController.getPropertyId);
+    this.router.get("/:id", this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!), this.roleMiddleware.requireRoles("TENANT"), this.propertyController.getPropertyIdByTenant)
     this.router.get(
       "/:id/calendar-prices",
       this.propertyController.get30DayPropertyCalendar
@@ -57,8 +62,17 @@ export class PropertyRouter {
       "/",
       this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
+      this.uploaderMiddleware
+      .upload()
+      .fields([{name: "urlImages", maxCount: 10}]),
       validateBody(CreatePropertyDTO),
       this.propertyController.createProperty
+    );
+    this.router.get(
+      "/:id/validation/step-one",
+      this.jwtMiddleware.verifyToken(JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      this.propertyController.validatePropertyStepOne
     );
     this.router.patch(
       "/:id/publish",

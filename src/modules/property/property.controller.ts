@@ -9,12 +9,16 @@ import {
   UpdatePropertyDTO,
 } from "./dto/property.dto";
 import { PropertyService } from "./property.service";
+import { CreatePropertyService } from "./service/create-property.service";
+import { ApiError } from "../../utils/api-error";
 
 export class PropertyController {
   private propertyService: PropertyService;
+  private createPropertyService : CreatePropertyService;
 
   constructor() {
     this.propertyService = new PropertyService();
+    this.createPropertyService = new CreatePropertyService();
   }
 
   getAllProperties = async (req: Request, res: Response) => {
@@ -51,6 +55,20 @@ export class PropertyController {
     return res.status(200).send(result);
   };
 
+  getPropertyId = async (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    const tenantId = Number(res.locals.user.tenant.id);
+    const result = await this.propertyService.getPropertyId(id);
+    return res.status(200).send(result)
+  };
+
+  getPropertyIdByTenant = async (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    const tenantId = Number(res.locals.user.tenant.id);
+    const result = await this.propertyService.getPropertyIdByTenant(id, tenantId);
+    return res.status(200).send(result)
+  }
+
   get30DayPropertyCalendar = async (req: Request, res: Response) => {
     const propertyId = Number(req.params.id);
     const startDate = req.query.startDate as string;
@@ -64,22 +82,35 @@ export class PropertyController {
   createProperty = async (req: Request, res: Response) => {
     const authUserId = Number(res.locals.user.id);
     const data = plainToInstance(CreatePropertyDTO, req.body);
-    const result = await this.propertyService.createProperty(authUserId, data);
+
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const urlImages = files.urlImages;
+
+    if (!urlImages || urlImages.length === 0 ) throw new ApiError("urlImage is required", 400);
+
+    const result = await this.createPropertyService.createProperty(authUserId, data, urlImages );
     return res.status(201).send(result);
   };
+
+  validatePropertyStepOne = async (req: Request, res: Response) => {
+    const id = Number(req.params.id);
+    const tenantId = Number(res.locals.user.tenant.id);
+    const result = await this.createPropertyService.validatePropertyStepOne(id, tenantId);
+    return res.status(200).send(result);
+  }
 
   publishProperty = async (req: Request, res: Response) => {
     const tenantId = Number(res.locals.user.tenant.id);
     const id = Number(req.params.id);
     plainToInstance(PublishPropertyDTO, req.body);
-    const result = await this.propertyService.publishProperty(id, tenantId);
+    const result = await this.createPropertyService.publishProperty(id, tenantId);
     return res.status(200).send(result);
   };
 
   unpublishProperty = async (req: Request, res: Response) => {
     const tenantId = Number(res.locals.user.tenant.id);
     const id = Number(req.params.id);
-    const result = await this.propertyService.unpublishProperty(id, tenantId);
+    const result = await this.createPropertyService.unpublishProperty(id, tenantId);
     return res.status(200).send(result);
   };
 

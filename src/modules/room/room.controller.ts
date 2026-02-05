@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { RoomService } from "./room.service";
 import { plainToInstance } from "class-transformer";
 import { CreateRoomDTO, GetAllRoomsDTO, UpdateRoomDTO } from "./dto/room.dto";
+import { ApiError } from "../../utils/api-error";
+import { url } from "inspector";
 
 export class RoomController {
   roomService: RoomService;
@@ -37,10 +39,19 @@ export class RoomController {
     const tenantId = Number(res.locals.user.tenant.id);
     const propertyId = Number(req.params.propertyId);
     const data = plainToInstance(CreateRoomDTO, req.body);
+
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const urlImages = files.urlImages;
+
+    if (!urlImages || urlImages.length === 0) {
+      throw new ApiError("At least one room image is required", 400);
+    }
+
     const result = await this.roomService.createRoom(
       tenantId,
       propertyId,
-      data
+      data,
+      urlImages
     );
     return res.status(201).send(result);
   };
