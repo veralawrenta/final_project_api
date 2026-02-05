@@ -8,17 +8,6 @@ export class RoomController {
 
   constructor() {
     this.roomService = new RoomService();
-  }
-
-  getAvailableRooms = async (req: Request, res: Response) => {
-    const propertyId = Number(req.params.propertyId);
-    const { checkIn, checkOut } = req.query;
-    const rooms = await this.roomService.getAllAvailableRooms(
-      propertyId, 
-      checkIn as string, 
-      checkOut as string
-    );
-    return res.status(200).send(rooms);
   };
 
   getAllRoomsByProperty = async (req: Request, res: Response) => {

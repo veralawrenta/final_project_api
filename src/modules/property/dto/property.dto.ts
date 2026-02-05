@@ -7,14 +7,12 @@ import {
   IsOptional,
   IsString,
   Min,
-  ValidateNested
+  ValidateNested,
 } from "class-validator";
 import { Prisma } from "../../../../generated/prisma/client";
 import { PropertyType } from "../../../../generated/prisma/enums";
 import { IsDateOnly } from "../../../validators/is-date-only.validator";
 import { PaginationQueryParams } from "../../pagination/dto/pagination.dto";
-import { CreatePropertyImageDTO } from "../../propertyImage/dto/propertyImage.dto";
-import { CreateRoomFlowDTO } from "../../room/dto/room.dto";
 
 export enum PropertySortBy {
   NAME = "name",
@@ -92,6 +90,20 @@ export class GetPropertyAvailabilityQueryDTO {
   totalGuests!: number;
 }
 
+export class RoomImageInput {
+  @IsNotEmpty()
+  @IsNumber()
+  roomId!: number;
+
+  @IsNotEmpty()
+  @IsString()
+  urlImages!: string;
+
+  @IsOptional()
+  @Transform(({ value }) => Boolean(value))
+  isCover?: boolean;
+}
+
 export class CreatePropertyDTO {
   @IsNotEmpty()
   @IsString()
@@ -131,20 +143,6 @@ export class CreatePropertyDTO {
   amenities?: string[];
 }
 
-export class CreatePropertyFlowDTO extends CreatePropertyDTO {
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CreatePropertyImageDTO)
-  propertyImages?: CreatePropertyImageDTO[];
-
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CreateRoomFlowDTO)
-  rooms?: CreateRoomFlowDTO[];
-}
-
 export class UpdatePropertyDTO {
   @IsOptional()
   @IsString()
@@ -182,4 +180,31 @@ export class UpdatePropertyDTO {
   @IsArray()
   @IsString({ each: true })
   amenities?: string[];
+
+  // property images: add URLs (uploaded elsewhere) or remove by id
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  addPropertyImageUrls?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  removePropertyImageIds?: number[];
+
+  // room images: add/remove per room
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RoomImageInput)
+  addRoomImages?: RoomImageInput[];
+
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  removeRoomImageIds?: number[];
+}
+
+export class PublishPropertyDTO {
+  // no body needed now; included for validation placeholder
 }

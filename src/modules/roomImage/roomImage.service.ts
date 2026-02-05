@@ -1,4 +1,4 @@
-import { PrismaClient } from "../../../generated/prisma/client";
+import { PrismaClient, PropertyStatus } from "../../../generated/prisma/client";
 import { CloudinaryService } from "../../cloudinary/cloudinary.service";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
@@ -121,7 +121,16 @@ export class RoomImagesService {
     }
     if (image.room.property.tenantId !== tenantId) {
       throw new ApiError("Unauthorized", 403);
-    }
+    };
+
+    if (image.room.property.propertyStatus === PropertyStatus.PUBLISHED) {
+      const count = await this.prisma.roomImage.count({
+        where: { roomId: image.roomId, deletedAt: null }
+      });
+      if (count <= 1) {
+        throw new ApiError("Published room must have at least one image", 400);
+      };
+    };
 
     const deletedRoomImage = await this.prisma.roomImage.update({
       where: { id },

@@ -2,9 +2,9 @@ import { Router } from "express";
 import { JWTMiddleware } from "../../middlewares/jwt.middleware";
 import { RoleMiddleware } from "../../middlewares/role.middleware";
 import { UploaderMiddleware } from "../../middlewares/uploader.middleware";
-import { validateBody } from "../../middlewares/validation.middleware";
-import { CreatePropertyImageDTO } from "../propertyImage/dto/propertyImage.dto";
 import { PropertyImagesController } from "./propertyImage.controller";
+import { CreatePropertyImageDTO } from "./dto/propertyImage.dto";
+import { validateBody } from "../../middlewares/validation.middleware";
 
 export class PropertyImagesRouter {
   router: Router;
@@ -26,12 +26,29 @@ export class PropertyImagesRouter {
       "/property/:propertyId",
       this.propertyImagesController.getAllPropertyImagesByProperty
     );
-    this.router.patch(
+    this.router.post(
+      "/:id/property-images",
+      this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      this.roleMiddleware.requirePropertyOwnership,
+      this.uploaderMiddleware
+        .upload()
+        .fields([{ name: "urlImages", maxCount: 1 }]),
+      validateBody(CreatePropertyImageDTO),
+      this.propertyImagesController.uploadPropertyImage
+    );
+    /*this.router.patch(
       "/:id/cover",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
       validateBody(CreatePropertyImageDTO),
       this.propertyImagesController.updatePropertyImage
+    );*/
+    this.router.delete(
+      "/:id",
+      this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      this.propertyImagesController.deleteRoomImage
     );
   };
 
