@@ -28,7 +28,16 @@ export class RoomImageRouter {
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roomImagesController.getAllRoomImagesByRoom
     );
-
+    this.router.post(
+      "/room:roomId",
+      this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      this.uploaderMiddleware
+        .upload()
+        .fields([{ name: "urlImage", maxCount: 1 }]),
+      validateBody(CreateRoomImageDTO),
+      this.roomImagesController.uploadRoomImage
+    );
     this.router.patch(
       "/:id/cover",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),

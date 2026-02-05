@@ -13,14 +13,8 @@ export class SeasonalRateController {
 
   createSeasonalRate = async (req: Request, res: Response) => {
     const tenantId = Number(res.locals.user.tenant.id);
-    const roomId = Number(req.params.roomId);
     const data = plainToInstance(CreateSeasonalRatesDTO, req.body);
-
-    const result = await this.seasonalRateService.createSeasonalRate(
-      tenantId,
-      roomId,
-      data
-    );
+    const result = await this.seasonalRateService.createSeasonalRate(tenantId, data);
     return res.status(201).send(result);
   };
 

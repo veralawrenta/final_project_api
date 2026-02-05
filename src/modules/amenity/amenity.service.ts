@@ -1,10 +1,10 @@
-import { PrismaClient } from "../../../generated/prisma/client";
+import { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
 
 export class AmenityService {
   private prisma: PrismaClient;
-  
+
   constructor() {
     this.prisma = prisma;
   }
@@ -12,7 +12,6 @@ export class AmenityService {
   getMasterAmenities = async () => {
     return this.prisma.amenity.findMany({
       where: {
-        propertyId: null,
         deletedAt: null,
       },
       select: {
@@ -35,8 +34,12 @@ export class AmenityService {
     }
     return this.prisma.amenity.findMany({
       where: {
-        propertyId,
-        deletedAt: null,
+        properties: {
+          some: {
+            propertyId,
+            deletedAt: null,
+          },
+        },
       },
       select: {
         id: true,
@@ -47,54 +50,51 @@ export class AmenityService {
   };
 
   syncAmenities = async (
-    tx: any,
+    tx: Prisma.TransactionClient,
     propertyId: number,
     amenityCodes: string[]
   ) => {
-    const currentAmenities = await tx.amenity.findMany({
+    const masterAmenities = await tx.amenity.findMany({
+      where: {
+        code: { in: amenityCodes },
+        deletedAt: null,
+      },
+    });
+
+    if (masterAmenities.length !== amenityCodes.length) {
+      throw new ApiError("Invalid amenity code", 400);
+    }
+
+    const existingAmenities = await tx.propertyAmenity.findMany({
       where: { propertyId, deletedAt: null },
     });
 
-    const currentAmenityCodes = currentAmenities.map((a: any) => a.code);
+    const existingAmenityIds = existingAmenities.map((a) => a.amenityId);
+    const masterAmenityIds = masterAmenities.map((a) => a.id);
 
-    const toAdd = amenityCodes.filter(
-      (code) => !currentAmenityCodes.includes(code)
-    );
-    const toRemove = currentAmenities.filter(
-      (amenity: any) => !amenityCodes.includes(amenity.code)
+    const toAdd = masterAmenityIds.filter(
+      (id) => !existingAmenityIds.includes(id)
     );
 
-    if (toAdd.length > 0) {
-      const masterAmenities = await tx.amenity.findMany({
-        where: {
-          code: { in: toAdd },
-          propertyId: null,
-          deletedAt: null,
-        },
-      });
+    const toRemove = existingAmenities.filter(
+      (pa) => !masterAmenityIds.includes(pa.amenityId)
+    );
 
-      if (masterAmenities.length !== toAdd.length) {
-        throw new ApiError("Invalid amenity code", 400);
-      }
-
-      await tx.amenity.createMany({
-        data: masterAmenities.map((a: any) => ({
-          code: a.code,
-          name: a.name,
+    if (toAdd.length) {
+      await tx.propertyAmenity.createMany({
+        data: toAdd.map((amenityId) => ({
           propertyId,
+          amenityId,
         })),
       });
     }
 
-    if (toRemove.length > 0) {
-      await tx.amenity.updateMany({
+    if (toRemove.length) {
+      await tx.propertyAmenity.updateMany({
         where: {
-          id: { in: toRemove.map((a: any) => a.id) },
-          propertyId,
+          id: { in: toRemove.map((a) => a.id) },
         },
-        data: {
-          deletedAt: new Date(),
-        },
+        data: { deletedAt: new Date() },
       });
     }
   };

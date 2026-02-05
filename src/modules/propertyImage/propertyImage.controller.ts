@@ -36,12 +36,10 @@ export class PropertyImagesController {
     return res.status(201).send(result);
   };
 
-  updatePropertyImage = async (req: Request, res: Response) => {
+  deleteRoomImage = async (req: Request, res: Response) => {
     const tenantId = Number(res.locals.user.tenant.id);
     const id = Number(req.params.id);
-    const data = plainToInstance(UpdatePropertyImageDTO, req.body);
-
-    const result = await this.propertyImagesService.updatePropertyImage(id, tenantId, data);
+    const result = await this.propertyImagesService.deletePropertyImage(id, tenantId);
     return res.status(200).send(result);
   };
 }

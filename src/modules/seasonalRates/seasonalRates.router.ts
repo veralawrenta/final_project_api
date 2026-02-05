@@ -3,6 +3,7 @@ import { JWTMiddleware } from "../../middlewares/jwt.middleware";
 import { RoleMiddleware } from "../../middlewares/role.middleware";
 import { validateBody } from "../../middlewares/validation.middleware";
 import {
+  CreateSeasonalRatesDTO,
   UpdateSeasonalRatesDTO
 } from "./dto/seasonalRates.dto";
 import { SeasonalRateController } from "./seasonalRates.controller";
@@ -27,6 +28,13 @@ export class SeasonalRateRouter {
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
       this.seasonalController.getAllSeasonalRatesByTenant
+    );
+    this.router.post(
+      "/room/:roomId",
+      this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
+      this.roleMiddleware.requireRoles("TENANT"),
+      validateBody(CreateSeasonalRatesDTO),
+      this.seasonalController.createSeasonalRate
     );
     this.router.patch(
       "/:id",
