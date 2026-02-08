@@ -207,11 +207,8 @@ export class AuthService {
 
     if (!user) {
       throw new ApiError("Invalid credentials", 400);
-    }
-
-    //if (!user.isVerified) {
-    //  throw new ApiError("Not verified. Please verify your email", 400);
-    //}
+    };
+    
     if (user.provider !== Provider.CREDENTIAL) {
       throw new ApiError("Please sign in with Google login", 400);
     }

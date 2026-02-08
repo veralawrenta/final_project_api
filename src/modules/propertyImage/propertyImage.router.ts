@@ -23,11 +23,11 @@ export class PropertyImagesRouter {
   }
   private initializedRoutes = () => {
     this.router.get(
-      "/property/:propertyId",
+      "/properties/:propertyId",
       this.propertyImagesController.getAllPropertyImagesByProperty
     );
     this.router.post(
-      "/property/:propertyId",
+      "/properties/:propertyId",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
       this.roleMiddleware.requirePropertyOwnership,
@@ -37,13 +37,6 @@ export class PropertyImagesRouter {
       validateBody(CreatePropertyImageDTO),
       this.propertyImagesController.uploadPropertyImage
     );
-    /*this.router.patch(
-      "/:id/cover",
-      this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
-      this.roleMiddleware.requireRoles("TENANT"),
-      validateBody(CreatePropertyImageDTO),
-      this.propertyImagesController.updatePropertyImage
-    );*/
     this.router.delete(
       "/:id",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),

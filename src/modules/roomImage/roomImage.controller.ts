@@ -18,9 +18,10 @@ export class RoomImagesController {
   };
 
   uploadRoomImage = async (req: Request, res: Response) => {
-    const tenantId = Number(res.locals.user.tenant.id);
-    const roomId = Number(req.params.roomId);
+    const authUserId = Number(res.locals.user.id);
+    if (!authUserId) { throw new ApiError ("Unauthorized", 403)};
 
+    const roomId = Number(req.params.roomId);
     const files = req.files as { [filedname: string]: Express.Multer.File[] };
     const urlImage = files.urlImage?.[0];
     if (!urlImage) {
@@ -29,25 +30,18 @@ export class RoomImagesController {
     const data = plainToInstance(CreateRoomImageDTO, req.body);
     const result = await this.roomImagesService.uploadRoomImage(
       roomId,
-      tenantId,
+      authUserId,
       urlImage,
       data
     );
     return res.status(201).send(result);
   };
 
-  updateRoomImage = async (req: Request, res: Response) => {
-    const tenantId = Number(res.locals.user.tenant.id);
-    const id = Number(req.params.id);
-    const data = plainToInstance(UpdateRoomImageDTO, req.body);
-
-    const result = await this.roomImagesService.updateRoomImage(id, tenantId, data);
-    return res.status(200).send(result);
-  };
   deleteRoomImage = async (req: Request, res: Response) => {
-    const tenantId = Number(res.locals.user.tenant.id);
+    const authUserId = Number(res.locals.user.id);
+    if (!authUserId) { throw new ApiError ("Unauthorized", 403)};
     const id = Number(req.params.id);
-    const result = await this.roomImagesService.deleteRoomImage(id, tenantId);
+    const result = await this.roomImagesService.deleteRoomImage(id, authUserId);
     return res.status(200).send(result);
   };
 };

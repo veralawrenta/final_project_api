@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Min,
   ValidateNested,
 } from "class-validator";
 import { PaginationQueryParams } from "../../pagination/dto/pagination.dto";
@@ -17,10 +18,13 @@ export class CreateRoomDTO {
 
   @IsNotEmpty()
   @IsNumber()
+  @Type(() => Number) 
   basePrice!: number;
 
   @IsNotEmpty()
   @IsNumber()
+  @Min(1)
+  @Type(() => Number) 
   totalGuests!: number;
 
   @IsNotEmpty()
@@ -29,6 +33,8 @@ export class CreateRoomDTO {
 
   @IsNotEmpty()
   @IsNumber()
+  @Min(1)
+  @Type(() => Number) 
   totalUnits!: number;
 }
 
@@ -47,10 +53,13 @@ export class UpdateRoomDTO {
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number) 
   basePrice?: number;
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
+  @Min(1) 
   totalGuests?: number;
 
   @IsOptional()
@@ -59,6 +68,8 @@ export class UpdateRoomDTO {
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number) 
+  @Min(1)
   totalUnits?: number;
 }
 

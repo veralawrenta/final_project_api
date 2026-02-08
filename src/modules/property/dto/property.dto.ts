@@ -119,10 +119,12 @@ export class CreatePropertyDTO {
 
   @IsNotEmpty()
   @IsNumber()
+  @Type(() => Number)
   cityId!: number;
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   categoryId?: number;
 
   @IsNotEmpty()
@@ -131,15 +133,28 @@ export class CreatePropertyDTO {
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   latitude?: number;
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   longitude?: number;
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @Transform(({ value }) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string") {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  })
   amenities?: string[];
 }
 
@@ -158,10 +173,12 @@ export class UpdatePropertyDTO {
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   cityId?: number;
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   categoryId?: number;
 
   @IsOptional()
@@ -170,10 +187,12 @@ export class UpdatePropertyDTO {
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   latitude?: number;
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   longitude?: number;
 
   @IsOptional()

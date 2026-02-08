@@ -2,6 +2,7 @@ import { PrismaClient, PropertyStatus } from "../../../generated/prisma/client";
 import { CloudinaryService } from "../../cloudinary/cloudinary.service";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
+import { resolveTenantByUserId } from "../services/shared/resolve-tenant";
 import { CreateRoomImageDTO, UpdateRoomImageDTO } from "./dto/roomImage.dto";
 
 export class RoomImagesService {
@@ -17,97 +18,67 @@ export class RoomImagesService {
     const roomImages = await this.prisma.roomImage.findMany({
       where: { roomId, deletedAt: null },
     });
-    if (roomImages.length === 0) {
-      throw new ApiError("No images found for the room", 404);
-    }
     return roomImages;
   };
 
   uploadRoomImage = async (
     roomId: number,
-    tenantId: number,
+    authUserId: number,
     urlImage: Express.Multer.File,
     body: CreateRoomImageDTO
   ) => {
-    const room = await this.prisma.room.findFirst({
-      where: { id: roomId, deletedAt: null },
-      include: {
-        property: true,
-      },
-    });
-    if (!room) {
-      throw new ApiError("Room not found", 404);
-    }
-    if (room.property.tenantId !== tenantId) {
-      throw new ApiError("Unauthorized to add images to this room", 403);
-    }
+    return this.prisma.$transaction(async (tx) => {
+      const tenant = await resolveTenantByUserId(authUserId);
 
-    if (body.isCover) {
-      await this.prisma.roomImage.updateMany({
-        where: {
-          roomId,
-          isCover: true,
-          deletedAt: null,
-        },
-        data: {
-          isCover: false,
-        },
+      const room = await tx.room.findFirst({
+        where: { id: roomId, property: {tenantId: tenant.id}, deletedAt: null },
+        include: { property: true },
       });
-    }
 
-    const { secure_url } = await this.cloudinaryService.upload(urlImage);
+      if (!room) {
+        throw new ApiError("Room not found", 404);
+      }
 
-    const roomImage = await this.prisma.roomImage.create({
-      data: {
-        roomId,
-        urlImages: secure_url,
-        isCover: body.isCover,
-      },
-    });
-    return roomImage;
-  };
+      if (room.property.tenantId !== tenant.id) {
+        throw new ApiError("Unauthorized to add images to this room", 403);
+      }
 
-  updateRoomImage = async (
-    id: number,
-    tenantId: number,
-    body: UpdateRoomImageDTO
-  ) => {
-    const roomImage = await this.prisma.roomImage.findFirst({
-      where: { id },
-      include: {
-        room: {
-          include: {
-            property: true,
+      const count = await tx.roomImage.count({
+        where: { roomId, deletedAt: null },
+      });
+
+      if (count >= 10) {
+        throw new ApiError("Maximum 10 images allowed per room", 400);
+      }
+
+      if (body.isCover) {
+        await tx.roomImage.updateMany({
+          where: {
+            roomId,
+            isCover: true,
+            deletedAt: null,
           },
+          data: { isCover: false },
+        });
+      }
+
+      const { secure_url } = await this.cloudinaryService.upload(urlImage);
+
+      return tx.roomImage.create({
+        data: {
+          roomId,
+          urlImages: secure_url,
+          isCover: body.isCover,
         },
-      },
+      });
     });
-    if (!roomImage) {
-      throw new ApiError("Room image not found", 404);
-    }
-    if (roomImage.room.property.tenantId !== tenantId) {
-      throw new ApiError("Forbidden", 403);
-    }
-    if (body.isCover === true) {
-      await this.prisma.roomImage.updateMany({
-        where: {
-          roomId: roomImage.roomId,
-          isCover: true,
-          deletedAt: null,
-        },
-        data: { isCover: false },
-      });
-      const updatedRoomImage = await this.prisma.roomImage.update({
-        where: { id },
-        data: { isCover: body.isCover },
-      });
-      return updatedRoomImage;
-    }
   };
 
-  deleteRoomImage = async (id: number, tenantId: number) => {
+  deleteRoomImage = async (id: number, authUserId: number) => {
+    const tenant = await resolveTenantByUserId(authUserId);
     const image = await this.prisma.roomImage.findFirst({
-      where: { id },
+      
+      where: { id, deletedAt: null },
       include: {
         room: {
           include: {
@@ -119,18 +90,18 @@ export class RoomImagesService {
     if (!image) {
       throw new ApiError("Room image not exist", 404);
     }
-    if (image.room.property.tenantId !== tenantId) {
+    if (image.room.property.tenantId !== tenant.id) {
       throw new ApiError("Unauthorized", 403);
-    };
+    }
 
     if (image.room.property.propertyStatus === PropertyStatus.PUBLISHED) {
       const count = await this.prisma.roomImage.count({
-        where: { roomId: image.roomId, deletedAt: null }
+        where: { roomId: image.roomId, deletedAt: null },
       });
       if (count <= 1) {
         throw new ApiError("Published room must have at least one image", 400);
-      };
-    };
+      }
+    }
 
     const deletedRoomImage = await this.prisma.roomImage.update({
       where: { id },

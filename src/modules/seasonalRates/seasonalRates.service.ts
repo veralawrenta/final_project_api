@@ -6,6 +6,7 @@ import {
   formattedDate,
 } from "../../utils/date.utils";
 import { RedisService } from "../redis/redis.service";
+import { resolveTenantByUserId } from "../services/shared/resolve-tenant";
 import {
   CreateSeasonalRatesDTO,
   GetSeasonalRatesDTO,
@@ -29,9 +30,11 @@ export class SeasonalRatesService {
   };
 
   createSeasonalRate = async (
-    tenantId: number,
+    authUserId: number,
     body: CreateSeasonalRatesDTO
   ) => {
+    const tenant = await resolveTenantByUserId(authUserId);
+
     const startDate = formattedDate(body.startDate);
     const endDate = formattedDate(body.endDate);
 
@@ -57,9 +60,8 @@ export class SeasonalRatesService {
       let scopeWhere: any;
 
       if (body.roomId) {
-        // Room-level seasonal rate
         const room = await tx.room.findFirst({
-          where: { id: body.roomId, property: { tenantId }, deletedAt: null },
+          where: { id: body.roomId, property: { tenantId: tenant.id }, deletedAt: null },
           include: { property: true },
         });
         if (!room) {
@@ -73,9 +75,8 @@ export class SeasonalRatesService {
         scopeWhere = { roomId: body.roomId };
 
       } else {
-        // Property-level seasonal rate
         const property = await tx.property.findFirst({
-          where: { id: body.propertyId, tenantId, deletedAt: null },
+          where: { id: body.propertyId, tenantId: tenant.id, deletedAt: null },
         });
         if (!property) {
           throw new ApiError("Property not found", 404);
@@ -121,10 +122,11 @@ export class SeasonalRatesService {
   };
 
   getAllSeasonalRatesByTenant = async (
-    tenantId: number,
+    authUserId: number,
     query: GetSeasonalRatesDTO
   ) => {
     const { page, take, sortBy, sortOrder } = query;
+    const tenant = await resolveTenantByUserId(authUserId);
 
     const whereClause: Prisma.SeasonalRateWhereInput = {
       deletedAt: null,
@@ -133,14 +135,14 @@ export class SeasonalRatesService {
           room: {
             deletedAt: null,
             property: {
-              tenantId,
+              tenantId: tenant.id,
               deletedAt: null,
             },
           },
         },
         {
           property: {
-            tenantId,
+            tenantId: tenant.id,
             deletedAt: null,
           },
         },
@@ -172,11 +174,49 @@ export class SeasonalRatesService {
     };
   };
 
+  getSeasonalRateById = async (id: number, authUserId: number) => {
+    const tenant = await resolveTenantByUserId(authUserId);
+
+    const seasonalRate = await this.prisma.seasonalRate.findFirst({
+      where: { id, deletedAt: null},
+      include: {
+        room : {
+          select: {
+            id: true,
+            name: true,
+            basePrice: true,
+            totalUnits: true,
+            totalGuests: true,
+            property: true,
+          },
+        },
+        property: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            city: true,
+            category: true,
+            tenantId: true,
+          },
+        },
+      },
+    });
+    if (!seasonalRate) { throw new ApiError ("Seasonal rate not found", 404)};
+
+    const ownerTenantId = seasonalRate.room?.property?.tenantId || seasonalRate.property?.tenantId;
+    if (ownerTenantId !== tenant.id) { throw new ApiError("Unauthorized to view this seasonal rate ID", 403)};
+
+    return seasonalRate;
+  }
+
   updateSeasonalRate = async (
     id: number,
-    tenantId: number,
+    authUserId: number,
     body: UpdateSeasonalRatesDTO
   ) => {
+    const tenant = await resolveTenantByUserId(authUserId);
+
     const updated = await this.prisma.$transaction(async (tx) => {
       const seasonalRate = await tx.seasonalRate.findUnique({
         where: { id },
@@ -196,7 +236,7 @@ export class SeasonalRatesService {
 
       // Check ownership
       const ownerTenantId = seasonalRate.room?.property.tenantId || seasonalRate.property?.tenantId;
-      if (ownerTenantId !== tenantId) {
+      if (ownerTenantId !== tenant.id) {
         throw new ApiError("Unauthorized to update this seasonal rate", 403);
       }
 
@@ -261,7 +301,9 @@ export class SeasonalRatesService {
     return updated.updatedSeasonalRate;
   };
 
-  deleteSeasonalRate = async (id: number, tenantId: number) => {
+  deleteSeasonalRate = async (id: number, authUserId: number) => {
+    const tenant = await resolveTenantByUserId(authUserId);
+    
     const seasonalRate = await this.prisma.seasonalRate.findUnique({
       where: { id },
       include: {
@@ -280,7 +322,7 @@ export class SeasonalRatesService {
 
     // Check ownership
     const ownerTenantId = seasonalRate.room?.property.tenantId || seasonalRate.property?.tenantId;
-    if (ownerTenantId !== tenantId) {
+    if (ownerTenantId !== tenant.id) {
       throw new ApiError("Unauthorized to delete this seasonal rate", 403);
     }
 
