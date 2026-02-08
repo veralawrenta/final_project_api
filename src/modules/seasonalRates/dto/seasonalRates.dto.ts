@@ -7,6 +7,7 @@ import {
   Min,
 } from "class-validator";
 import { PaginationQueryParams } from "../../pagination/dto/pagination.dto";
+import { IsDateOnly } from "../../../validators/is-date-only.validator";
 
 export class CreateSeasonalRatesDTO {
   @IsNotEmpty()
@@ -14,11 +15,11 @@ export class CreateSeasonalRatesDTO {
   name!: string;
 
   @IsNotEmpty()
-  @IsDateString()
+  @IsDateOnly()
   startDate!: string;
 
   @IsNotEmpty()
-  @IsDateString()
+  @IsDateOnly()
   endDate!: string;
 
   @IsNotEmpty()
@@ -41,11 +42,11 @@ export class UpdateSeasonalRatesDTO {
   name?: string;
 
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   startDate?: string;
 
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   endDate?: string;
 
   @IsOptional()

@@ -1,10 +1,6 @@
-import { IsBoolean, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsNotEmpty, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class CreateRoomImageDTO {
-  @IsNotEmpty()
-  @IsString()
-  urlImages!: string;
-  
   @IsNotEmpty()
   @IsBoolean()
   isCover?: boolean;

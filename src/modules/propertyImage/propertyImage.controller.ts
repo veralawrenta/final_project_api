@@ -1,7 +1,7 @@
 import { plainToInstance } from "class-transformer";
 import { Request, Response } from "express";
 import { ApiError } from "../../utils/api-error";
-import { CreatePropertyImageDTO, UpdatePropertyImageDTO } from "./dto/propertyImage.dto";
+import { CreatePropertyImageDTO } from "./dto/propertyImage.dto";
 import { PropertyImagesService } from "./propertyImage.service";
 
 export class PropertyImagesController {
@@ -18,7 +18,10 @@ export class PropertyImagesController {
   };
 
   uploadPropertyImage = async (req: Request, res: Response) => {
-    const tenantId = Number(res.locals.user.tenant.id);
+    const authUserId = Number(res.locals.user.id);
+    if (!authUserId) {
+      throw new ApiError("Unauthorized", 403);
+    }
     const propertyId = Number(req.params.propertyId);
 
     const files = req.files as { [filedname: string]: Express.Multer.File[] };
@@ -29,7 +32,7 @@ export class PropertyImagesController {
     const data = plainToInstance(CreatePropertyImageDTO, req.body);
     const result = await this.propertyImagesService.uploadPropertyImage(
       propertyId,
-      tenantId,
+      authUserId,
       urlImages,
       data
     );
@@ -37,9 +40,12 @@ export class PropertyImagesController {
   };
 
   deleteRoomImage = async (req: Request, res: Response) => {
-    const tenantId = Number(res.locals.user.tenant.id);
     const id = Number(req.params.id);
-    const result = await this.propertyImagesService.deletePropertyImage(id, tenantId);
+    const authUserId = Number(res.locals.user.id);
+    if (!authUserId) {
+      throw new ApiError("Unauthorized", 403);
+    };
+    const result = await this.propertyImagesService.deletePropertyImage(id,authUserId);
     return res.status(200).send(result);
   };
 }

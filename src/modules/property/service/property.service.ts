@@ -2,24 +2,24 @@ import {
   Prisma,
   PrismaClient,
   PropertyStatus,
-} from "../../../generated/prisma/client";
-import { prisma } from "../../lib/prisma";
-import { ApiError } from "../../utils/api-error";
+} from "../../../../generated/prisma/client";
+import { prisma } from "../../../lib/prisma";
+import { ApiError } from "../../../utils/api-error";
 import {
   formattedDate,
   getTodayDateOnly,
   toDateOnlyString,
-} from "../../utils/date.utils";
-import { RedisService } from "../redis/redis.service";
+} from "../../../utils/date.utils";
+import { RedisService } from "../../redis/redis.service";
 import crypto from "node:crypto";
 import {
-  CreatePropertyDTO,
   GetAllPropertiesDTO,
   GetPropertyAvailabilityQueryDTO,
   GetSearchAvailablePropertiesDTO,
   UpdatePropertyDTO,
-} from "./dto/property.dto";
-import { AmenityService } from "../amenity/amenity.service";
+} from "../dto/property.dto";
+import { AmenityService } from "../../amenity/amenity.service";
+import { resolveTenantByUserId } from "../../services/shared/resolve-tenant";
 
 export class PropertyService {
   private prisma: PrismaClient;
@@ -31,10 +31,9 @@ export class PropertyService {
     this.amenityService = new AmenityService();
     this.redis = new RedisService();
   }
-
+  //redis cache
   private SEARCH_CACHE_TTL_SECONDS = 60;
   private CALENDAR_CACHE_TTL_SECONDS = 300;
-
   private async invalidatePropertyCaches(propertyId: number) {
     await this.redis.delByPrefix("property:search:");
     await this.redis.delByPrefix(`property:calendar30:${propertyId}:`);
@@ -56,27 +55,62 @@ export class PropertyService {
       propertyStatus: PropertyStatus.PUBLISHED,
       deletedAt: null,
     };
-
     if (search) {
       whereClause.name = { contains: search, mode: "insensitive" };
-    };
-
+    }
     if (propertyType) {
       whereClause.propertyType = propertyType;
-    };
-
-    let orderBy;
-    if (sortBy === "price") {
-      orderBy = { name: sortOrder };
-    } else {
-      orderBy = { [sortBy]: sortOrder };
     }
 
+    if (sortBy === "price") {
+      const properties = await this.prisma.property.findMany({
+        where: whereClause,
+        include: {
+          propertyImages: true,
+          category: true,
+          city: true,
+          tenant: true,
+          rooms: {
+            where: { deletedAt: null },
+            select: {
+              id: true,
+              basePrice: true,
+              totalGuests: true,
+              totalUnits: true,
+            },
+          },
+        },
+      });
+      // calculating displayPrice for each property
+      const propertiesWithPrice = properties.map((property) => {
+        const rooms = property.rooms || [];
+        const displayPrice =
+          rooms.length > 0
+            ? Math.min(...rooms.map((r) => r.basePrice))
+            : Infinity;
+        return { ...property, displayPrice };
+      });
+      propertiesWithPrice.sort((a, b) =>
+        sortOrder === "asc"
+          ? a.displayPrice - b.displayPrice
+          : b.displayPrice - a.displayPrice
+      );
+      const start = (page - 1) * take;
+      const end = start + take;
+      return {
+        data: propertiesWithPrice.slice(start, end),
+        meta: {
+          page,
+          take,
+          total: propertiesWithPrice.length,
+        },
+      };
+    }
     const properties = await this.prisma.property.findMany({
       where: whereClause,
       orderBy: { [sortBy]: sortOrder },
       skip: (page - 1) * take,
-      take: take,
+      take,
       include: {
         propertyImages: true,
         category: true,
@@ -91,30 +125,11 @@ export class PropertyService {
         },
       },
     });
-    // calculating displayPrice for each property
-    const propertiesWithPrice = properties.map((property) => {
-      const rooms = property.rooms || [];
-      const displayPrice =
-        rooms.length > 0 ? Math.min(...rooms.map((r) => r.basePrice)) : 0;
-      return {
-        ...property,
-        displayPrice,
-      };
-    });
-
-    let sortedProperties = propertiesWithPrice;
-    if (sortBy === "price") {
-      sortedProperties = propertiesWithPrice.sort((a, b) => {
-        return sortOrder === "asc"
-          ? a.displayPrice - b.displayPrice
-          : b.displayPrice - a.displayPrice;
-      });
-    }
     const count = await this.prisma.property.count({
       where: whereClause,
     });
     return {
-      data: sortedProperties,
+      data: properties,
       meta: { page, take, total: count },
     };
   };
@@ -126,7 +141,7 @@ export class PropertyService {
       "property:search",
       query as unknown as Record<string, unknown>
     );
-    const cached = await this.redis.getValue(cacheKey);
+    const cached = await this.redis.getValue(cacheKey); //this to check if this search had been implemented before
     if (cached) return JSON.parse(cached);
 
     const {
@@ -154,7 +169,7 @@ export class PropertyService {
       propertyStatus: PropertyStatus.PUBLISHED,
       deletedAt: null,
     };
-
+    //for filtering and search purposes
     if (propertyType) whereClause.propertyType = propertyType;
     if (search) whereClause.name = { contains: search, mode: "insensitive" };
 
@@ -224,7 +239,7 @@ export class PropertyService {
         fixedPrice: true,
       },
     });
-
+    //map all seasonal prices by property
     const propertyRatesMap = new Map<number, typeof propertySeasonalRates>();
     for (const rate of propertySeasonalRates) {
       if (!propertyRatesMap.has(rate.propertyId!)) {
@@ -232,42 +247,36 @@ export class PropertyService {
       }
       propertyRatesMap.get(rate.propertyId!)!.push(rate);
     }
-
     type RoomWithPrice = {
       room: (typeof properties)[0]["rooms"][0];
       price: number;
       useSeasonalRate: boolean;
     };
-
     type PropertyWithPrice = (typeof properties)[0] & {
       displayPrice: number;
       availableRooms: RoomWithPrice[];
     };
-
     const results: PropertyWithPrice[] = [];
-
     for (const property of properties) {
       const availableRooms: RoomWithPrice[] = [];
       const propertyRates = propertyRatesMap.get(property.id) || [];
+
       for (const room of property.rooms) {
         const roomSeasonalRate = room.seasonalRates.find(
           (r) => checkInDate < r.endDate && checkOutDate > r.startDate
         );
-
         const propertySeasonalRate = propertyRates.find(
           (r) => checkInDate < r.endDate && checkOutDate > r.startDate
         );
-
+        //if any fixedrate, should prevail
         const effectiveRate = roomSeasonalRate || propertySeasonalRate;
-
         const price = effectiveRate ? effectiveRate.fixedPrice : room.basePrice;
         const useSeasonalRate = !!effectiveRate;
-
         availableRooms.push({ room, price, useSeasonalRate });
       }
-
+      // check available rooms first, If no rooms work, throw the property away
       if (availableRooms.length === 0) continue;
-
+      //then check the property price and find the cheapest
       const displayPrice = Math.min(...availableRooms.map((r) => r.price));
       results.push({
         ...property,
@@ -275,7 +284,6 @@ export class PropertyService {
         availableRooms,
       });
     }
-
     const sorted = [...results].sort((a, b) => {
       if (sortBy === "name") {
         return sortOrder === "asc"
@@ -296,6 +304,7 @@ export class PropertyService {
     };
 
     await this.redis.setValue(
+      //requesting to memorize this requirement
       cacheKey,
       JSON.stringify(response),
       this.SEARCH_CACHE_TTL_SECONDS
@@ -354,6 +363,7 @@ export class PropertyService {
     const propertySeasonalRates = await this.prisma.seasonalRate.findMany({
       where: {
         id,
+        propertyId: id,
         roomId: null,
         deletedAt: null,
         startDate: { lt: checkOutDate },
@@ -380,10 +390,12 @@ export class PropertyService {
         (r) => checkInDate < r.endDate && checkOutDate > r.startDate
       );
       const effectiveSeasonalRate = roomSeasonalRate || propertySeasonalRate;
-
-      const displayPrice = effectiveSeasonalRate
-        ? effectiveSeasonalRate.fixedPrice
-        : room.basePrice;
+      //check the available room prices
+      const displayPrice = isAvailable
+        ? effectiveSeasonalRate
+          ? effectiveSeasonalRate.fixedPrice
+          : room.basePrice
+        : null;
 
       return {
         id: room.id,
@@ -409,13 +421,14 @@ export class PropertyService {
   };
 
   getAllPropertiesByTenant = async (
-    tenantId: number,
+    authUserId: number,
     query: GetAllPropertiesDTO
   ) => {
     const { page, take, sortBy, sortOrder, search } = query;
+    const tenant = await resolveTenantByUserId(authUserId);
 
     const whereClause: Prisma.PropertyWhereInput = {
-      tenantId,
+      tenantId: tenant.id,
       deletedAt: null,
     };
 
@@ -432,14 +445,16 @@ export class PropertyService {
         id: true,
         name: true,
         propertyType: true,
-        category: { select: { name: true } },
-        city: { select: { name: true } },
-        propertyImages: { where: { deletedAt: null }, select: { id: true } },
+        category: { select: { id: true, name: true } },
+        city: { select: { id: true, name: true } },
+        propertyStatus: true,
+        propertyImages: { where: { deletedAt: null }, select: { id: true, urlImages: true, isCover: true }, orderBy: {isCover:"desc"}},
         rooms: {
           where: { deletedAt: null },
           select: {
             basePrice: true,
             totalUnits: true,
+            totalGuests: true,
             roomImages: { where: { deletedAt: null }, select: { id: true } },
           },
         },
@@ -471,10 +486,11 @@ export class PropertyService {
         propertyType: property.propertyType,
         lowestPrice,
         totalRooms: property.rooms.length,
-        status:
-          hasPropertyImages && publishableRooms.length > 0
+        propertyImages: property.propertyImages,
+        status: property.propertyStatus
+          /*hasPropertyImages && publishableRooms.length > 0
             ? "PUBLISHED"
-            : "DRAFT",
+            : "DRAFT",*/
       };
     });
     const count = await this.prisma.property.count({
@@ -492,12 +508,14 @@ export class PropertyService {
       where: { id, propertyStatus: PropertyStatus.PUBLISHED, deletedAt: null },
       include: {
         propertyImages: { where: { deletedAt: null } },
+        amenities: true,
+        category: { where: { deletedAt: null } },
+        city: true,
+        tenant: true,
         rooms: {
           where: { deletedAt: null },
           include: {
             roomImages: { where: { deletedAt: null } },
-            roomNonAvailability: { where: { deletedAt: null } },
-            seasonalRates: { where: { deletedAt: null } },
           },
         },
       },
@@ -508,11 +526,13 @@ export class PropertyService {
     return property;
   };
 
-  getPropertyIdByTenant = async (id: number, tenantId: number) => {
+  getPropertyIdByTenant = async (id: number, authUserId: number) => {
+    const tenant = await resolveTenantByUserId(authUserId);
+
     const property = await this.prisma.property.findFirst({
       where: {
         id,
-        tenantId,
+        tenantId: tenant.id,
         deletedAt: null,
       },
       select: {
@@ -522,11 +542,19 @@ export class PropertyService {
         propertyType: true,
         address: true,
         propertyStatus: true,
+        latitude: true,
+        longitude: true,
         city: { select: { id: true, name: true } },
         category: { select: { id: true, name: true } },
         propertyImages: {
           where: { deletedAt: null },
-          select: { id: true },
+          select: { id: true, urlImages: true, isCover: true },
+        },
+        amenities: {
+          where: { deletedAt: null },
+          include: {
+            amenity: { select: { id: true, code: true, name: true } },
+          },
         },
         rooms: {
           where: { deletedAt: null },
@@ -542,7 +570,12 @@ export class PropertyService {
             },
             roomNonAvailability: {
               where: { deletedAt: null },
-              select: { id: true, startDate: true, endDate: true },
+              select: {
+                id: true,
+                reason: true,
+                startDate: true,
+                endDate: true,
+              },
             },
             seasonalRates: {
               where: { deletedAt: null, endDate: { gte: new Date() } },
@@ -558,7 +591,9 @@ export class PropertyService {
         },
       },
     });
-    if (!property) {throw new ApiError("Property not found", 404)};
+    if (!property) {
+      throw new ApiError("Property not found", 404);
+    }
     //check the checklist first of the property images, rooms (if there is at least one created), room images
     const hasPropertyImages = property.propertyImages.length > 0;
     const hasPublishableRoom = property.rooms.some(
@@ -568,11 +603,15 @@ export class PropertyService {
         room.totalUnits > 0 &&
         room.totalGuests > 0
     );
-    //check also the status of property
-    const status = hasPropertyImages && hasPublishableRoom ? "PUBLISHED" : "DRAFT";
+    const status =
+      hasPropertyImages && hasPublishableRoom ? "PUBLISHED" : "DRAFT";
     //if draft that means no maintenance and seasonal rate prevails
-    const hasMaintenance = status === "PUBLISHED" && property.rooms.some((room) => room.roomNonAvailability.length > 0);
-    const hasSeasonalRate = status === "PUBLISHED" && property.rooms.some((room) => room.seasonalRates.length > 0);
+    const hasMaintenance =
+      status === "PUBLISHED" &&
+      property.rooms.some((room) => room.roomNonAvailability.length > 0);
+    const hasSeasonalRate =
+      status === "PUBLISHED" &&
+      property.rooms.some((room) => room.seasonalRates.length > 0);
 
     return {
       id: property.id,
@@ -580,13 +619,18 @@ export class PropertyService {
       description: property.description,
       propertyType: property.propertyType,
       address: property.address,
+      latitude: property.latitude,
+      longitude: property.longitude,
+      cityId: property.city.id,
       city: property.city.name,
-      category: property.category?.name ?? null,
+      categoryId: property.category?.id,
+      category : property.category?.name,
       status,
       hasPropertyImages,
       hasPublishableRoom,
       hasMaintenance,
       hasSeasonalRate,
+      amenities: property.amenities.map((pa) => pa.amenity.code),
       rooms: property.rooms,
       images: property.propertyImages,
     };
@@ -741,14 +785,18 @@ export class PropertyService {
 
   updateProperty = async (
     id: number,
-    tenantId: number,
+    authUserId: number,
     body: Partial<UpdatePropertyDTO>
   ) => {
+    const tenant = await resolveTenantByUserId(authUserId);
     const property = await this.prisma.property.findFirst({
       where: { id, deletedAt: null },
       include: {
         propertyImages: true,
+        city: true,
+        category: true,
         tenant: true,
+        amenities: true,
         rooms: {
           where: {
             deletedAt: null,
@@ -775,7 +823,7 @@ export class PropertyService {
       throw new ApiError("Property not found", 400);
     }
 
-    if (property.tenantId !== tenantId) {
+    if (property.tenantId !== tenant.id) {
       throw new ApiError("Tenant is unauthorized", 403);
     }
 
@@ -822,148 +870,120 @@ export class PropertyService {
           body.amenities
         );
       }
-      if (body.addPropertyImageUrls && body.addPropertyImageUrls.length > 0) {
-        await tx.propertyImage.createMany({
-          data: body.addPropertyImageUrls.map((url) => ({
-            propertyId: id,
-            urlImages: url,
-            isCover: false,
-          })),
-        });
-      }
-      if (
-        body.removePropertyImageIds &&
-        body.removePropertyImageIds.length > 0
-      ) {
-        await tx.propertyImage.updateMany({
-          where: { id: { in: body.removePropertyImageIds }, propertyId: id },
-          data: { deletedAt: new Date() },
-        });
-      }
-      // room images add/remove
-      if (body.addRoomImages && body.addRoomImages.length > 0) {
-        for (const img of body.addRoomImages) {
-          const room = property.rooms.find((r) => r.id === img.roomId);
-          if (!room) continue;
-          await tx.roomImage.create({
-            data: {
-              roomId: img.roomId,
-              urlImages: img.urlImages,
-              isCover: img.isCover ?? false,
-            },
-          });
-        }
-      }
-      if (body.removeRoomImageIds && body.removeRoomImageIds.length > 0) {
-        await tx.roomImage.updateMany({
-          where: {
-            id: { in: body.removeRoomImageIds },
-            room: { propertyId: id },
-          },
-          data: { deletedAt: new Date() },
-        });
-      }
-
       await this.invalidatePropertyCaches(id);
       return updatedProperty;
     });
   };
 
-  deletePropertyById = async (id: number, tenantId: number) => {
-    const property = await this.prisma.property.findFirst({
-      where: { id, deletedAt: null },
-      include: {
-        rooms: {
-          where: { deletedAt: null },
-          include: {
-            transactions: {
-              where: {
-                deletedAt: null,
-                status: {
-                  in: [
-                    "WAITING_FOR_PAYMENT",
-                    "WAITING_FOR_CONFIRMATION",
-                    "CONFIRMED",
-                  ],
+  deletePropertyById = async (id: number, authUserId: number) => {
+    try {
+      const tenant = await resolveTenantByUserId(authUserId);
+  
+      const property = await this.prisma.property.findFirst({
+        where: {
+          id,
+          tenantId: tenant.id,
+          deletedAt: null,
+        },
+        include: {
+          rooms: {
+            where: { deletedAt: null },
+            include: {
+              transactions: {
+                where: {
+                  deletedAt: null,
+                  status: {
+                    in: [
+                      "WAITING_FOR_PAYMENT",
+                      "WAITING_FOR_CONFIRMATION",
+                      "CONFIRMED",
+                    ],
+                  },
                 },
               },
-            },
-            seasonalRates: true,
-            roomImages: true,
-            roomNonAvailability: {
-              where: { deletedAt: null },
+              roomNonAvailability: {
+                where: { deletedAt: null },
+              },
             },
           },
         },
-      },
-    });
-    if (!property) {
-      throw new ApiError("Property not found", 400);
-    }
-    if (property.tenantId !== tenantId) {
-      throw new ApiError("Unauthorized", 403);
-    }
-
-    const roomWithActiveBooking = property.rooms.find(
-      (room) => room.transactions.length > 0
-    );
-    if (roomWithActiveBooking) {
+      });
+  
+      if (!property) {
+        throw new ApiError("Property not found", 404);
+      }
+  
+      // Guards
+      if (property.rooms.some((r) => r.transactions.length > 0)) {
+        throw new ApiError(
+          "Cannot delete property with active or upcoming bookings",
+          400
+        );
+      }
+  
+      if (property.rooms.some((r) => r.roomNonAvailability.length > 0)) {
+        throw new ApiError(
+          "Cannot delete property with active or upcoming maintenance schedule",
+          400
+        );
+      }
+  
+      const roomIds = property.rooms.map((r) => r.id);
+      const now = new Date();
+  
+      await this.prisma.$transaction(async (tx) => {
+        if (roomIds.length > 0) {
+          await tx.roomImage.updateMany({
+            where: { roomId: { in: roomIds } },
+            data: { deletedAt: now },
+          });
+  
+          await tx.roomNonAvailability.updateMany({
+            where: { roomId: { in: roomIds } },
+            data: { deletedAt: now },
+          });
+  
+          await tx.seasonalRate.updateMany({
+            where: {
+              OR: [{ roomId: { in: roomIds } }, { propertyId: id }],
+            },
+            data: { deletedAt: now },
+          });
+        }
+  
+        await tx.room.updateMany({
+          where: { propertyId: id },
+          data: { deletedAt: now },
+        });
+  
+        await tx.propertyAmenity.updateMany({
+          where: { propertyId: id },
+          data: { deletedAt: now },
+        });
+  
+        await tx.propertyImage.updateMany({
+          where: { propertyId: id },
+          data: { deletedAt: now },
+        });
+  
+        await tx.property.update({
+          where: { id },
+          data: { deletedAt: now },
+        });
+      });
+  
+      return { success: true };
+    } catch (err) {
+      console.error("DELETE PROPERTY ERROR >>>", err);
+  
+      if (err instanceof ApiError) {
+        throw err;
+      }
+  
       throw new ApiError(
-        "Cannot delete property with active or upcoming bookings",
-        400
+        "Internal server error while deleting property",
+        500
       );
     }
-
-    const roomWithActiveMaintenance = property.rooms.find(
-      (room) => room.roomNonAvailability.length > 0
-    );
-    if (roomWithActiveMaintenance) {
-      throw new ApiError(
-        "Cannot delete property with active or upcoming maintenance schedule",
-        400
-      );
-    }
-
-    const deletedProperty = await this.prisma.$transaction([
-      this.prisma.property.update({
-        where: { id },
-        data: {
-          deletedAt: new Date(),
-        },
-      }),
-      this.prisma.propertyAmenity.updateMany({
-        where: {
-          propertyId: id,
-          deletedAt: null,
-        },
-        data: {
-          deletedAt: new Date(),
-        },
-      }),
-      this.prisma.propertyImage.updateMany({
-        where: { propertyId: id },
-        data: { deletedAt: new Date() },
-      }),
-      this.prisma.room.updateMany({
-        where: { propertyId: id },
-        data: { deletedAt: new Date() },
-      }),
-      this.prisma.roomImage.updateMany({
-        where: { room: { propertyId: id } },
-        data: { deletedAt: new Date() },
-      }),
-      this.prisma.roomNonAvailability.updateMany({
-        where: { room: { propertyId: id } },
-        data: { deletedAt: new Date() },
-      }),
-      this.prisma.seasonalRate.updateMany({
-        where: {
-          OR: [{ room: { propertyId: id } }, { propertyId: id }],
-        },
-        data: { deletedAt: new Date() },
-      }),
-    ]);
-    await this.invalidatePropertyCaches(id);
-    return deletedProperty;
   };
 }

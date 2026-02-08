@@ -1,13 +1,14 @@
 import {
   PrismaClient,
   PropertyStatus,
+  Tenant,
 } from "../../../../generated/prisma/client";
 import { CloudinaryService } from "../../../cloudinary/cloudinary.service";
 import { prisma } from "../../../lib/prisma";
 import { ApiError } from "../../../utils/api-error";
 import { AmenityService } from "../../amenity/amenity.service";
-import { PropertyImagesService } from "../../propertyImage/propertyImage.service";
 import { RedisService } from "../../redis/redis.service";
+import { resolveTenantByUserId } from "../../services/shared/resolve-tenant";
 import { CreatePropertyDTO } from "../dto/property.dto";
 
 export class CreatePropertyService {
@@ -36,115 +37,122 @@ export class CreatePropertyService {
     body: CreatePropertyDTO,
     urlImages: Express.Multer.File[]
   ) => {
-    return await this.prisma.$transaction(async (tx) => {
-      const tenant = await this.prisma.tenant.findFirst({
-        where: { userId: authUserId, deletedAt: null },
-      });
-
-      if (!tenant) {
-        throw new ApiError(
-          "Tenant not found. Please register as a tenant first",
-          404
-        );
-      }
-
-      const existingProperty = await prisma.property.findFirst({
-        where: {
-          tenantId: tenant.id,
-          name: body.name,
-          address: body.address,
-          cityId: body.cityId,
-          deletedAt: null,
-        },
-      });
-
-      if (existingProperty) {
-        throw new ApiError(
-          "Property with the same name and this address already exist in this city",
-          409
-        );
-      }
-      const city = await tx.city.findUnique({
-        where: { id: body.cityId, deletedAt: null },
-      });
-      if (!city) {
-        throw new ApiError("City not found", 404);
-      }
-
-      if (body.categoryId) {
-        const category = await tx.category.findFirst({
+    if (!urlImages || urlImages.length === 0) {
+      throw new ApiError("At least one property image is required", 400);
+    }
+    if (urlImages.length > 10) {
+      throw new ApiError("One property can have a maximum of 10 images", 400);
+    }
+    let uploadedImageUrls: string[] = []; //upload all images to cloudinary first
+    try {
+      uploadedImageUrls = await Promise.all(
+        urlImages.map(async (file) => {
+          const { secure_url } = await this.cloudinaryService.upload(file);
+          return secure_url;
+        })
+      );
+    } catch (error) {
+      throw new ApiError("Failed to upload images to Cloudinary", 500);
+    }
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const tenant = await resolveTenantByUserId(authUserId);
+        const existingProperty = await tx.property.findFirst({
           where: {
-            id: body.categoryId,
             tenantId: tenant.id,
+            name: body.name,
+            address: body.address,
+            cityId: body.cityId,
             deletedAt: null,
           },
         });
-        if (!category) {
+
+        if (existingProperty) {
           throw new ApiError(
-            "Category not found or does not belong to this tenant",
-            404
+            "Property with the same name and this address already exist in this city",
+            409
           );
         }
-      }
-      const createdProperty = await this.prisma.property.create({
-        data: {
-          name: body.name,
-          description: body.description,
-          categoryId: body.categoryId,
-          cityId: body.cityId,
-          propertyType: body.propertyType,
-          address: body.address,
-          latitude: body.latitude,
-          longitude: body.longitude,
-          tenantId: tenant.id,
-          propertyStatus: PropertyStatus.DRAFT,
-        },
-      });
-      if (body.amenities && body.amenities.length > 0) {
-        await this.amenityService.syncAmenities(
-          tx,
-          createdProperty.id,
-          body.amenities
-        );
-      }
-      for (let i = 0; i < urlImages.length; i++) {
-        const { secure_url } = await this.cloudinaryService.upload(
-          urlImages[i]
-        );
-        await tx.propertyImage.create({
+        const city = await tx.city.findUnique({
+          where: { id: body.cityId, deletedAt: null },
+        });
+        if (!city) {
+          throw new ApiError("City not found", 404);
+        }
+
+        if (body.categoryId) {
+          const category = await tx.category.findFirst({
+            where: {
+              id: body.categoryId,
+              tenantId: tenant.id,
+              deletedAt: null,
+            },
+          });
+          if (!category) {
+            throw new ApiError(
+              "Category not found or does not belong to this tenant",
+              404
+            );
+          }
+        }
+        const createdProperty = await tx.property.create({
           data: {
-            propertyId: createdProperty.id,
-            urlImages: secure_url,
-            isCover: i === 0,
+            name: body.name,
+            description: body.description,
+            categoryId: body.categoryId,
+            cityId: body.cityId,
+            propertyType: body.propertyType,
+            address: body.address,
+            latitude: body.latitude,
+            longitude: body.longitude,
+            tenantId: tenant.id,
+            propertyStatus: PropertyStatus.DRAFT,
           },
         });
-      }
-      return await tx.property.findUnique({
-        where: { id: createdProperty.id },
-        include: {
-          propertyImages: true,
-          amenities: true,
-        },
+        if (body.amenities && body.amenities.length > 0) {
+          await this.amenityService.syncAmenities(
+            tx,
+            createdProperty.id,
+            body.amenities
+          );
+        }
+        for (let i = 0; i < uploadedImageUrls.length; i++) {
+          await tx.propertyImage.create({
+            data: {
+              propertyId: createdProperty.id,
+              urlImages: uploadedImageUrls[i],
+              isCover: i === 0,
+            },
+          });
+        }
+        return await tx.property.findUnique({
+          where: { id: createdProperty.id },
+          include: {
+            propertyImages: true,
+            amenities: true,
+          },
+        });
       });
-    });
+    } catch (error) {
+      throw error;
+    }
   };
   //this is for draft one if they cannot finish the property image and create property data
-  validatePropertyStepOne = async (id: number, tenantId: number) => {
+  validatePropertyStepOne = async (id: number, authUserId: number) => {
+    const tenant = await resolveTenantByUserId(authUserId);
+
     const property = await this.prisma.property.findFirst({
-      where: { id, tenantId, deletedAt: null },
+      where: { id, tenantId: tenant.id, deletedAt: null },
       include: {
         propertyImages: {
           where: { deletedAt: null },
         },
       },
     });
-  
     if (!property) {
       throw new ApiError("Property not found", 404);
     }
-  
     const hasPropertyImages = property.propertyImages.length > 0;
-  
     return {
       isStep1Complete: hasPropertyImages,
       checklist: {
@@ -153,10 +161,9 @@ export class CreatePropertyService {
     };
   };
 
-
-  validatePropertyPublish = async (id: number, tenantId: number) => {
+  validatePropertyPublish = async (id: number, tenant: Tenant) => {
     const property = await this.prisma.property.findFirst({
-      where: { id, tenantId, deletedAt: null },
+      where: { id, tenantId: tenant.id, deletedAt: null },
       include: {
         propertyImages: {
           where: { deletedAt: null },
@@ -174,7 +181,7 @@ export class CreatePropertyService {
 
     if (!property) {
       throw new ApiError("Property not found", 400);
-    };
+    }
 
     const hasPropertyImages = property.propertyImages.length > 0;
 
@@ -188,7 +195,7 @@ export class CreatePropertyService {
       );
     });
 
-    const canPublish =  hasPropertyImages && validRoom && hasRoom;
+    const canPublish = hasPropertyImages && validRoom && hasRoom;
 
     return {
       currentStatus: property.propertyStatus,
@@ -201,14 +208,18 @@ export class CreatePropertyService {
     };
   };
 
-  publishProperty = async (id: number, tenantId: number) => {
-    const publishability = await this.validatePropertyPublish(id, tenantId);
+  publishProperty = async (id: number, authUserId: number) => {
+    const tenant = await resolveTenantByUserId(authUserId);
+
+    const publishability = await this.validatePropertyPublish(id, tenant);
+
     if (publishability.currentStatus === PropertyStatus.PUBLISHED) {
       throw new ApiError("Property already published", 400);
     }
 
     if (!publishability.canPublish) {
-      const missing = [];
+      const missing: string[] = [];
+
       if (!publishability.checklist.propertyImages) {
         missing.push("property images");
       }
@@ -226,17 +237,20 @@ export class CreatePropertyService {
         400
       );
     }
+
     const updatedProperty = await this.prisma.property.update({
       where: { id },
-      data: { propertyStatus: "PUBLISHED" },
+      data: { propertyStatus: PropertyStatus.PUBLISHED },
     });
+
     await this.invalidatePropertyCaches(id);
     return updatedProperty;
   };
 
-  unpublishProperty = async (id: number, tenantId: number) => {
+  unpublishProperty = async (id: number, authUserId: number) => {
+    const tenant = await resolveTenantByUserId(authUserId);
     const property = await this.prisma.property.findFirst({
-      where: { id, tenantId, deletedAt: null },
+      where: { id, tenantId: tenant.id, deletedAt: null },
     });
     if (!property) throw new ApiError("Property not found", 404);
 

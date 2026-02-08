@@ -1,6 +1,7 @@
 import { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
+import { resolveTenantByUserId } from "../services/shared/resolve-tenant";
 import {
   CreateCategoryDTO,
   GetAllCategoriesDTO,
@@ -15,13 +16,15 @@ export class CategoryService {
   }
 
   getAllCategoriesByTenant = async (
-    tenantId: number,
+    authUserId: number,
     query: GetAllCategoriesDTO
   ) => {
     const { page, take, sortBy, sortOrder, search } = query;
 
+    const tenant = await resolveTenantByUserId(authUserId);
+    
     const whereClause: Prisma.CategoryWhereInput = {
-      tenantId,
+      tenantId: tenant.id,
       deletedAt: null,
     };
 
@@ -62,9 +65,10 @@ export class CategoryService {
     };
   };
 
-  getCategoryById = async (id: number, tenantId: number) => {
+  getCategoryById = async (id: number, authUserId: number) => {
+    const tenant = await resolveTenantByUserId(authUserId);
     const category = await this.prisma.category.findFirst({
-      where: { id, tenantId, deletedAt: null },
+      where: { id, tenantId: tenant.id, deletedAt: null },
       include: {
         properties: {
           where: { deletedAt: null },
@@ -82,45 +86,42 @@ export class CategoryService {
     return category;
   };
 
-  createCategory = async (tenantId: number, body: CreateCategoryDTO) => {
-    const tenant = await this.prisma.tenant.findFirst({
-      where: { id: tenantId },
-    });
-    if (!tenant) {
-      throw new ApiError("Tenant not found", 404);
-    }
-
+  createCategory = async (
+    authUserId: number,
+    body: CreateCategoryDTO
+  ) => {
+    const tenant = await resolveTenantByUserId(authUserId);
     const existingCategory = await this.prisma.category.findFirst({
-      where: { name: body.name, tenantId, deletedAt: null },
-    });
-    if (existingCategory) {
-      throw new ApiError("Category already exist", 409);
-    }
-
-    const createdCategory = await this.prisma.category.create({
-      data: {
+      where: {
         name: body.name,
-        tenantId,
+        tenantId: tenant.id,
+        deletedAt: null,
       },
     });
-    return createdCategory;
+  
+    if (existingCategory) {
+      throw new ApiError("Category already exists", 409);
+    };
+    return this.prisma.category.create({
+      data: {
+        name: body.name,
+        tenantId: tenant.id,
+      },
+    });
   };
 
   updateCategory = async (
     id: number,
-    tenantId: number,
+    authUserId: number,
     body: UpdateCategoryDTO
   ) => {
+    const tenant = await resolveTenantByUserId(authUserId);
     const category = await this.prisma.category.findFirst({
-      where: { id, tenantId, deletedAt: null },
+      where: { id, tenantId: tenant.id, deletedAt: null },
     });
     if (!category) {
       throw new ApiError("Category not found", 404);
-    }
-
-    if (category.tenantId !== tenantId) {
-      throw new ApiError("Unauthorized", 403);
-    }
+    };
 
     const createdCategory = await this.prisma.category.update({
       where: { id },
@@ -131,9 +132,10 @@ export class CategoryService {
     return createdCategory;
   };
 
-  deleteCategory = async (id: number, tenantId: number) => {
+  deleteCategory = async (id: number, authUserId: number) => {
+    const tenant = await resolveTenantByUserId(authUserId);
     const category = await this.prisma.category.findFirst({
-      where: { id, tenantId, deletedAt: null },
+      where: { id, tenantId: tenant.id, deletedAt: null },
     });
     if (!category) {
       throw new ApiError(" Category not found ", 404);

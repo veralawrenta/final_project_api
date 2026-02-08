@@ -6,6 +6,7 @@ import {
 import { CloudinaryService } from "../../cloudinary/cloudinary.service";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
+import { resolveTenantByUserId } from "../services/shared/resolve-tenant";
 import { CreateRoomDTO, GetAllRoomsDTO, UpdateRoomDTO } from "./dto/room.dto";
 
 export class RoomService {
@@ -17,9 +18,10 @@ export class RoomService {
     this.cloudinaryService = new CloudinaryService();
   }
 
-  getAllRoomsByProperty = async (tenantId: number, propertyId: number) => {
+  getAllRoomsByProperty = async (authUserId: number, propertyId: number) => {
+    const tenant = await resolveTenantByUserId(authUserId);
     const property = await this.prisma.property.findFirst({
-      where: { id: propertyId, tenantId, deletedAt: null },
+      where: { id: propertyId, tenantId: tenant.id, deletedAt: null },
     });
     if (!property) {
       throw new ApiError("Property not found", 404);
@@ -49,13 +51,14 @@ export class RoomService {
     return rooms;
   };
 
-  getAllRoomsByTenant = async (tenantId: number, query: GetAllRoomsDTO) => {
+  getAllRoomsByTenant = async (authUserId: number, query: GetAllRoomsDTO) => {
     const { page, take, sortBy, sortOrder } = query;
+    const tenant = await resolveTenantByUserId(authUserId);
 
     const whereClause: Prisma.RoomWhereInput = {
       deletedAt: null,
       property: {
-        tenantId,
+        tenantId: tenant.id,
         deletedAt: null,
       },
     };
@@ -66,9 +69,16 @@ export class RoomService {
       skip: (page - 1) * take,
       take: take,
       include: {
-        property: true,
+        property: {
+          select: {
+            name: true,
+            category: true,
+            city: true,
+          },
+        },
         roomImages: {
           where: { deletedAt: null },
+          select: { id: true, urlImages: true, isCover: true},
         },
         roomNonAvailability: {
           where: { deletedAt: null },
@@ -107,14 +117,15 @@ export class RoomService {
   };
 
   createRoom = async (
-    tenantId: number,
+    authUserId: number,
     propertyId: number,
     body: CreateRoomDTO,
     urlImages : Express.Multer.File[],
   ) => {
     return await this.prisma.$transaction(async (tx) => {
+      const tenant = await resolveTenantByUserId(authUserId);
       const property = await tx.property.findFirst({
-        where: { id: propertyId, tenantId, deletedAt: null },
+        where: { id: propertyId, tenantId: tenant.id, deletedAt: null },
         include: {
           propertyImages: true,
         },
@@ -131,6 +142,12 @@ export class RoomService {
       };
 
       if (!urlImages || urlImages.length === 0) { throw new ApiError ("At least one room image is required", 400)};
+      if (urlImages.length > 10) {
+        throw new ApiError(
+          "A room can have a maximum of 10 images",
+          400
+        );
+      };
 
       const existingRoom = await tx.room.findFirst({
         where: { name: body.name, propertyId: propertyId, deletedAt: null },
@@ -172,9 +189,10 @@ export class RoomService {
 
   updateRoom = async (
     id: number,
-    tenantId: number,
+    authUserId: number,
     body: Partial<UpdateRoomDTO>
   ) => {
+    const tenant = await resolveTenantByUserId(authUserId);
     const room = await this.prisma.room.findFirst({
       where: { id, deletedAt: null },
       include: { property: true },
@@ -182,8 +200,8 @@ export class RoomService {
     if (!room) {
       throw new ApiError("Room not found", 404);
     }
-    if (room.property.tenantId !== tenantId) {
-      throw new ApiError("Forbidden", 403);
+    if (room.property.tenantId !== tenant.id) {
+      throw new ApiError("Unauthorized", 403);
     }
     const activeBookingsCount = await this.prisma.transaction.count({
       where: {
@@ -219,7 +237,8 @@ export class RoomService {
     return updatedRoom;
   };
 
-  deleteRoom = async (id: number, tenantId: number) => {
+  deleteRoom = async (id: number, authUserId: number) => {
+    const tenant = await resolveTenantByUserId(authUserId);
     const room = await this.prisma.room.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -242,7 +261,7 @@ export class RoomService {
     if (!room) {
       throw new ApiError("room not found", 404);
     }
-    if (room.property.tenantId !== tenantId) {
+    if (room.property.tenantId !== tenant.id) {
       throw new ApiError("Forbidden", 403);
     }
 

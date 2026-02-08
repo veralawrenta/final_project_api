@@ -9,6 +9,7 @@ import {
   GetRoomNonAvailabilitiesByTenant,
   UpdateRoomNonAvailabilityDTO,
 } from "./dto/roomNonAvailability";
+import { resolveTenantByUserId } from "../services/shared/resolve-tenant";
 
 export class RoomNonAvailabilityService {
   private prisma: PrismaClient;
@@ -27,17 +28,18 @@ export class RoomNonAvailabilityService {
   };
 
   createRoomNonAvailability = async (
-    tenantId: number,
+    authUserId: number,
     roomId: number,
     body: CreateRoomNonAvailabilityDTO
   ) => {
+    const tenant = await resolveTenantByUserId(authUserId);
     const room = await this.prisma.room.findFirst({
-      where: { id: roomId, property: { tenantId }, deletedAt: null },
+      where: { id: roomId, property: { tenantId: tenant.id }, deletedAt: null },
       include: { property: true },
     });
     if (!room) {
       throw new ApiError("Room not found", 400);
-    }
+    };
     const startDate = formattedDate(body.startDate);
     const endDate = formattedDate(body.endDate);
     const today = getTodayDateOnly();
@@ -89,9 +91,11 @@ export class RoomNonAvailabilityService {
 
   updateRoomNonAvailability = async (
     id: number,
-    tenantId: number,
+    authUserId: number,
     body: Partial<UpdateRoomNonAvailabilityDTO>
   ) => {
+    const tenant = await resolveTenantByUserId(authUserId);
+
     const maintenanceBlock = await this.prisma.roomNonAvailability.findFirst({
       where: { id, deletedAt: null },
       include: { room: { include: { property: true } } },
@@ -99,7 +103,7 @@ export class RoomNonAvailabilityService {
     if (!maintenanceBlock) {
       throw new ApiError("Room non-availability not found", 404);
     }
-    if (maintenanceBlock.room.property.tenantId !== tenantId) {
+    if (maintenanceBlock.room.property.tenantId !== tenant.id) {
       throw new ApiError("Forbidden", 403);
     }
     const startDate = body.startDate
@@ -155,7 +159,9 @@ export class RoomNonAvailabilityService {
     return updatedRoomNonAvailability;
   };
 
-  deleteroomNonAvailability = async (id: number, tenantId: number) => {
+  deleteroomNonAvailability = async (id: number, authUserId: number) => {
+    const tenant = await resolveTenantByUserId(authUserId);
+
     const maintenance = await this.prisma.roomNonAvailability.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -169,7 +175,7 @@ export class RoomNonAvailabilityService {
     if (!maintenance) {
       throw new ApiError("Room non-availability not found", 404);
     }
-    if (maintenance.room.property.tenantId !== tenantId) {
+    if (maintenance.room.property.tenantId !== tenant.id) {
       throw new ApiError("Forbidden", 403);
     }
 
@@ -184,15 +190,17 @@ export class RoomNonAvailabilityService {
   };
 
   getAllRoomNonAvailabilitiesByTenant = async (
-    tenantId: number,
+    authUserId: number,
     query: GetRoomNonAvailabilitiesByTenant
   ) => {
     const { page, take, sortBy, sortOrder, search } = query;
+    const tenant = await resolveTenantByUserId(authUserId);
+
     const whereClause: Prisma.RoomNonAvailabilityWhereInput = {
       deletedAt: null,
       room: {
         property: {
-          tenantId,
+          tenantId: tenant.id,
           deletedAt: null,
         },
       },
@@ -229,15 +237,17 @@ export class RoomNonAvailabilityService {
   };
 
   getAllRoomNonAvailabilitiesByRoom = async (
-    tenantId: number,
+    authUserId: number,
     roomId: number
   ) => {
+    const tenant = await resolveTenantByUserId(authUserId);
+
     const room = await this.prisma.room.findFirst({
       where: {
         id: roomId,
         deletedAt: null,
         property: {
-          tenantId,
+          tenantId: tenant.id,
           deletedAt: null,
         },
       },

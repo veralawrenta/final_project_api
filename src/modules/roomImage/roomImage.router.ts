@@ -24,12 +24,12 @@ export class RoomImageRouter {
 
   private initializedRoutes = () => {
     this.router.get(
-      "/room/:roomId",
+      "/rooms/:roomId",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roomImagesController.getAllRoomImagesByRoom
     );
     this.router.post(
-      "/room/:roomId",
+      "/rooms/:roomId",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
       this.roleMiddleware.requireRoomOwnership,
@@ -39,18 +39,12 @@ export class RoomImageRouter {
       validateBody(CreateRoomImageDTO),
       this.roomImagesController.uploadRoomImage
     );
-    this.router.patch(
-      "/:id/cover",
-      this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
-      this.roleMiddleware.requireRoles("TENANT"),
-      validateBody(UpdateRoomImageDTO),
-      this.roomImagesController.updateRoomImage
-    );
 
     this.router.delete(
       "/:id",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
+      this.roleMiddleware.requireRoomOwnership,
       this.roomImagesController.deleteRoomImage
     );
   };

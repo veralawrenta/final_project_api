@@ -1,9 +1,8 @@
-import { Request, Response } from "express";
-import { RoomService } from "./room.service";
 import { plainToInstance } from "class-transformer";
-import { CreateRoomDTO, GetAllRoomsDTO, UpdateRoomDTO } from "./dto/room.dto";
+import { Request, Response } from "express";
 import { ApiError } from "../../utils/api-error";
-import { url } from "inspector";
+import { CreateRoomDTO, GetAllRoomsDTO, UpdateRoomDTO } from "./dto/room.dto";
+import { RoomService } from "./room.service";
 
 export class RoomController {
   roomService: RoomService;
@@ -13,19 +12,25 @@ export class RoomController {
   };
 
   getAllRoomsByProperty = async (req: Request, res: Response) => {
-    const tenantId = Number(res.locals.user.tenant.id);
+    const authUserId = Number(res.locals.user.id);
+    if (!authUserId) {
+      throw new ApiError("Unauthorized", 403);
+    }
     const propertyId = Number(req.params.propertyId);
     const result = await this.roomService.getAllRoomsByProperty(
-      tenantId,
+      authUserId,
       propertyId
     );
     return res.status(200).send(result);
   };
 
   getAllRoomsByTenant = async (req: Request, res: Response) => {
-    const tenantId = Number(res.locals.user.tenant.id);
+    const authUserId = Number(res.locals.user.id);
+    if (!authUserId) {
+      throw new ApiError("Unauthorized", 403);
+    }
     const query = plainToInstance(GetAllRoomsDTO, req.query);
-    const result = await this.roomService.getAllRoomsByTenant(tenantId, query);
+    const result = await this.roomService.getAllRoomsByTenant(authUserId, query);
     return res.status(200).send(result);
   };
 
@@ -36,7 +41,10 @@ export class RoomController {
   };
 
   createRoom = async (req: Request, res: Response) => {
-    const tenantId = Number(res.locals.user.tenant.id);
+    const authUserId = Number(res.locals.user.id);
+    if (!authUserId) {
+      throw new ApiError("Unauthorized", 403);
+    };
     const propertyId = Number(req.params.propertyId);
     const data = plainToInstance(CreateRoomDTO, req.body);
 
@@ -48,7 +56,7 @@ export class RoomController {
     }
 
     const result = await this.roomService.createRoom(
-      tenantId,
+      authUserId,
       propertyId,
       data,
       urlImages
@@ -58,16 +66,22 @@ export class RoomController {
 
   updateRoom = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
-    const tenantId = Number(res.locals.user.tenant.id);
+    const authUserId = Number(res.locals.user.id);
+    if (!authUserId) {
+      throw new ApiError("Unauthorized", 403);
+    };
     const data = plainToInstance(UpdateRoomDTO, req.body);
-    const result = await this.roomService.updateRoom(id, tenantId, data);
+    const result = await this.roomService.updateRoom(id, authUserId, data);
     return res.status(200).send(result);
   };
 
   deleteRoom = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
-    const tenantId = Number(res.locals.user.tenant.id);
-    await this.roomService.deleteRoom(id, tenantId);
+    const authUserId = Number(res.locals.user.tenant.id);
+    if (!authUserId) {
+      throw new ApiError("Unauthorized", 403);
+    };
+    await this.roomService.deleteRoom(id, authUserId);
     return res.status(204).send();
   };
 }
