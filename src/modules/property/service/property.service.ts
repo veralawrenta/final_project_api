@@ -114,6 +114,12 @@ export class PropertyService {
       include: {
         propertyImages: true,
         category: true,
+        city: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         rooms: {
           where: { deletedAt: null },
           select: {
@@ -327,7 +333,7 @@ export class PropertyService {
       where: { id, propertyStatus: PropertyStatus.PUBLISHED, deletedAt: null },
       include: {
         propertyImages: { where: { deletedAt: null } },
-        amenities: { where: { deletedAt: null } },
+        amenities: { where: { deletedAt: null }, select: {amenity: { select: {id: true, code: true, name:true}}}},
         city: true,
         category: true,
         tenant: true,
@@ -412,6 +418,7 @@ export class PropertyService {
     return {
       ...property,
       rooms: roomsWithAvailability,
+      amenities: property.amenities.map((pa) => pa.amenity),
       searchContext: {
         checkIn: query.checkIn,
         checkOut: query.checkOut,
@@ -508,7 +515,7 @@ export class PropertyService {
       where: { id, propertyStatus: PropertyStatus.PUBLISHED, deletedAt: null },
       include: {
         propertyImages: { where: { deletedAt: null } },
-        amenities: true,
+        amenities: {where: {deletedAt: null}, select: {amenity: {select: {id: true, code:true, name: true}}}},
         category: { where: { deletedAt: null } },
         city: true,
         tenant: true,
