@@ -27,7 +27,6 @@ export class OAuthService {
     if (!payload) {
       throw new ApiError("Invalid Google token", 401);
     }
-    console.log("Google token payload:", payload);
     return {
       email: payload.email!,
       firstName: payload.given_name || "no name",
@@ -38,15 +37,10 @@ export class OAuthService {
   };
 
   googleLogin = async (googleToken: string) => {
-    console.log("googleLogin called with token:", googleToken);
-
     const googleUser = await this.verifyGoogleToken(googleToken);
-    console.log("Google user verified:", googleUser);
-
     let user = await this.prisma.user.findFirst({
       where: { email: googleUser.email },
     });
-    console.log("User found:", user);
 
     if (!user) {
       user = await this.prisma.user.create({
@@ -59,7 +53,6 @@ export class OAuthService {
           isVerified: true,
         },
       });
-      console.log("User created:", user);
     }
     const JWTpayload = { id: user.id, role: user.role };
     const accessToken = jwt.sign(JWTpayload, process.env.JWT_ACCESS_SECRET!, {
@@ -78,7 +71,6 @@ export class OAuthService {
         role: user.role,
       },
     };
-    console.log("Login response prepared:", response);
     return response;
   };
 }

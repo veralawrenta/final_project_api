@@ -20,7 +20,6 @@ export class AuthController {
   }
 
   registerUserEmail = async (req: Request, res: Response) => {
-    console.log("RAW BODY:", req.body);
     const data = plainToInstance(RegisterUserDTO, req.body);
     const result = await this.authService.registerUserEmail(data);
     res.status(201).send(result);
@@ -67,9 +66,6 @@ export class AuthController {
   };
 
   resetPassword = async (req: Request, res: Response) => {
-    //console.log("AUTH USER FROM JWT:", res.locals.user);
-    //console.log("TOKEN FROM HEADER:", req.headers.authorization);
-
     const authUserId = res.locals.user.id;
     const verificationToken = req.headers.authorization!.split(" ")[1];
     const data = plainToInstance(ResetPasswordDTO, req.body);

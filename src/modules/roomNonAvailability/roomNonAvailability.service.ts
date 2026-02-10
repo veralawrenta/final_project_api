@@ -39,7 +39,7 @@ export class RoomNonAvailabilityService {
     });
     if (!room) {
       throw new ApiError("Room not found", 400);
-    };
+    }
     const startDate = formattedDate(body.startDate);
     const endDate = formattedDate(body.endDate);
     const today = getTodayDateOnly();
@@ -207,7 +207,23 @@ export class RoomNonAvailabilityService {
     };
 
     if (search) {
-      whereClause.reason = { contains: search, mode: "insensitive" };
+      whereClause.OR = [
+        { reason: { contains: search, mode: "insensitive" } },
+        { room: { name: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    let orderBy: Prisma.RoomNonAvailabilityOrderByWithRelationInput;
+
+    if (sortBy === "roomName") {
+      orderBy = { room: { name: sortOrder } };
+    } else if (
+      sortBy === "reason" ||
+      sortBy === "createdAt"
+    ) {
+      orderBy = { [sortBy]: sortOrder };
+    } else {
+      orderBy = { createdAt: sortOrder };
     }
 
     const maintenances = await this.prisma.roomNonAvailability.findMany({

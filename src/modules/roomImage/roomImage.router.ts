@@ -44,7 +44,6 @@ export class RoomImageRouter {
       "/:id",
       this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roleMiddleware.requireRoles("TENANT"),
-      this.roleMiddleware.requireRoomOwnership,
       this.roomImagesController.deleteRoomImage
     );
   };

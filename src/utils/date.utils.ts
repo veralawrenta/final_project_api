@@ -2,7 +2,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { ApiError } from "./api-error";
 
 export const PROPERTY_TIMEZONE = "Asia/Jakarta";
-export const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/; // enforce strict iso date only input.
+export const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/; 
 
 export const formattedDate = (dateStr: string): Date => {
   if (!DATE_ONLY_REGEX.test(dateStr)) {

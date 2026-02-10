@@ -109,7 +109,6 @@ export class UserService {
       },
       include: { tenant: true },
     });
-    console.log("Updated tenant:", updatedUser);
     return updatedUser;
   };
 
@@ -126,7 +125,6 @@ export class UserService {
         deletedAt: new Date(),
       }
     });
-    console.log("Deleted user:", deletedUser);
     return deletedUser;
   };
 

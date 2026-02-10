@@ -27,32 +27,32 @@ export class RoomImagesService {
     urlImage: Express.Multer.File,
     body: CreateRoomImageDTO
   ) => {
-    return this.prisma.$transaction(async (tx) => {
+    
       const tenant = await resolveTenantByUserId(authUserId);
 
-      const room = await tx.room.findFirst({
+      const room = await this.prisma.room.findFirst({
         where: { id: roomId, property: {tenantId: tenant.id}, deletedAt: null },
         include: { property: true },
       });
 
       if (!room) {
         throw new ApiError("Room not found", 404);
-      }
+      };
 
       if (room.property.tenantId !== tenant.id) {
         throw new ApiError("Unauthorized to add images to this room", 403);
-      }
+      };
 
-      const count = await tx.roomImage.count({
+      const count = await this.prisma.roomImage.count({
         where: { roomId, deletedAt: null },
       });
 
-      if (count >= 10) {
-        throw new ApiError("Maximum 10 images allowed per room", 400);
+      if (count >= 3) {
+        throw new ApiError("Maximum 3 images allowed per room", 400);
       }
 
       if (body.isCover) {
-        await tx.roomImage.updateMany({
+        await this.prisma.roomImage.updateMany({
           where: {
             roomId,
             isCover: true,
@@ -64,14 +64,13 @@ export class RoomImagesService {
 
       const { secure_url } = await this.cloudinaryService.upload(urlImage);
 
-      return tx.roomImage.create({
+      return this.prisma.roomImage.create({
         data: {
           roomId,
           urlImages: secure_url,
           isCover: body.isCover,
         },
       });
-    });
   };
 
   deleteRoomImage = async (id: number, authUserId: number) => {
@@ -100,8 +99,8 @@ export class RoomImagesService {
       });
       if (count <= 1) {
         throw new ApiError("Published room must have at least one image", 400);
-      }
-    }
+      };
+    };
 
     const deletedRoomImage = await this.prisma.roomImage.update({
       where: { id },

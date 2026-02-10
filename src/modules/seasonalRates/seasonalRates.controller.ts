@@ -16,7 +16,7 @@ export class SeasonalRateController {
     const authUserId = Number(res.locals.user.id);
     if (!authUserId) {
       throw new ApiError("Unauthorized", 403);
-    }
+    };
     const data = plainToInstance(CreateSeasonalRatesDTO, req.body);
     const result = await this.seasonalRateService.createSeasonalRate(authUserId, data);
     return res.status(201).send(result);
@@ -26,7 +26,7 @@ export class SeasonalRateController {
     const authUserId = Number(res.locals.user.id);
     if (!authUserId) {
       throw new ApiError("Unauthorized", 403);
-    }
+    };
     const query = plainToInstance(GetSeasonalRatesDTO, req.query);
     const result = await this.seasonalRateService.getAllSeasonalRatesByTenant(
       authUserId,

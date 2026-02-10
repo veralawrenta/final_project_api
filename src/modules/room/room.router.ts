@@ -40,7 +40,7 @@ export class RoomRouter {
       this.roleMiddleware.requirePropertyOwnership,
       this.uploaderMiddleware
         .upload()
-        .fields([{ name: "urlImages", maxCount: 10 }]),
+        .fields([{ name: "urlImages", maxCount: 3 }]),
       validateBody(CreateRoomDTO),
       this.roomController.createRoom
     );

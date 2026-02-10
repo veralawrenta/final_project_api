@@ -1,10 +1,11 @@
-import { Prisma, PrismaClient, PropertyStatus } from "../../../generated/prisma/client";
+import {
+  Prisma,
+  PrismaClient,
+  PropertyStatus,
+} from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import {
-  getTodayDateOnly,
-  formattedDate,
-} from "../../utils/date.utils";
+import { getTodayDateOnly, formattedDate } from "../../utils/date.utils";
 import { RedisService } from "../redis/redis.service";
 import { resolveTenantByUserId } from "../services/shared/resolve-tenant";
 import {
@@ -45,10 +46,11 @@ export class SeasonalRatesService {
     if (body.fixedPrice <= 0) {
       throw new ApiError("Fixed price must be greater than 0", 400);
     }
-
-    // Validate that ONLY one of roomId or propertyId is provided
     if (body.roomId && body.propertyId) {
-      throw new ApiError("Cannot apply seasonal rate to both room and property", 400);
+      throw new ApiError(
+        "Cannot apply seasonal rate to both room and property",
+        400
+      );
     }
 
     if (!body.roomId && !body.propertyId) {
@@ -57,23 +59,29 @@ export class SeasonalRatesService {
 
     const created = await this.prisma.$transaction(async (tx) => {
       let propertyId: number;
-      let scopeWhere: any;
+      let overlapWhere: Prisma.SeasonalRateWhereInput;
 
       if (body.roomId) {
         const room = await tx.room.findFirst({
-          where: { id: body.roomId, property: { tenantId: tenant.id }, deletedAt: null },
+          where: {
+            id: body.roomId,
+            property: { tenantId: tenant.id },
+            deletedAt: null,
+          },
           include: { property: true },
         });
         if (!room) {
           throw new ApiError("Room not found", 404);
         }
         if (room.property.propertyStatus !== PropertyStatus.PUBLISHED) {
-          throw new ApiError("You cannot apply seasonal rate for unpublished property", 400);
+          throw new ApiError(
+            "You cannot apply seasonal rate for unpublished property",
+            400
+          );
         }
 
         propertyId = room.property.id;
-        scopeWhere = { roomId: body.roomId };
-
+        overlapWhere = { roomId: body.roomId };
       } else {
         const property = await tx.property.findFirst({
           where: { id: body.propertyId, tenantId: tenant.id, deletedAt: null },
@@ -82,17 +90,18 @@ export class SeasonalRatesService {
           throw new ApiError("Property not found", 404);
         }
         if (property.propertyStatus !== PropertyStatus.PUBLISHED) {
-          throw new ApiError("You cannot apply seasonal rate for unpublished property", 400);
+          throw new ApiError(
+            "You cannot apply seasonal rate for unpublished property",
+            400
+          );
         }
 
         propertyId = property.id;
-        scopeWhere = { propertyId: body.propertyId };
+        overlapWhere = { propertyId: body.propertyId };
       }
-
-      // Check for overlapping rates in the same scope
       const overlapRate = await tx.seasonalRate.findFirst({
         where: {
-          ...scopeWhere,
+          ...overlapWhere,
           deletedAt: null,
           startDate: { lt: endDate },
           endDate: { gt: startDate },
@@ -109,8 +118,8 @@ export class SeasonalRatesService {
           startDate,
           endDate,
           fixedPrice: body.fixedPrice,
-          roomId: body.roomId || null,
-          propertyId: body.propertyId || null,
+          roomId: body.roomId ?? null,
+          propertyId: body.propertyId ?? null,
         },
       });
 
@@ -125,7 +134,7 @@ export class SeasonalRatesService {
     authUserId: number,
     query: GetSeasonalRatesDTO
   ) => {
-    const { page, take, sortBy, sortOrder } = query;
+    const { page, take, sortBy, sortOrder, search } = query;
     const tenant = await resolveTenantByUserId(authUserId);
 
     const whereClause: Prisma.SeasonalRateWhereInput = {
@@ -148,6 +157,35 @@ export class SeasonalRatesService {
         },
       ],
     };
+
+    if (search) {
+      whereClause.OR = [
+        {
+          name: { contains: search, mode: "insensitive" },
+        },
+        {
+          property: {
+            name: { contains: search, mode: "insensitive" },
+          },
+        },
+      ];
+    }
+
+    let orderBy: Prisma.SeasonalRateOrderByWithRelationInput;
+
+    if (sortBy === "propertyName") {
+      orderBy = { property: { name: sortOrder } };
+    } else if (sortBy === "roomName") {
+      orderBy = { room: { name: sortOrder } };
+    } else if (
+      sortBy === "name" ||
+      sortBy === "fixedPrice" ||
+      sortBy === "createdAt"
+    ) {
+      orderBy = { [sortBy]: sortOrder };
+    } else {
+      orderBy = { createdAt: sortOrder };
+    }
 
     const seasonalRates = await this.prisma.seasonalRate.findMany({
       where: whereClause,
@@ -178,9 +216,9 @@ export class SeasonalRatesService {
     const tenant = await resolveTenantByUserId(authUserId);
 
     const seasonalRate = await this.prisma.seasonalRate.findFirst({
-      where: { id, deletedAt: null},
+      where: { id, deletedAt: null },
       include: {
-        room : {
+        room: {
           select: {
             id: true,
             name: true,
@@ -202,13 +240,18 @@ export class SeasonalRatesService {
         },
       },
     });
-    if (!seasonalRate) { throw new ApiError ("Seasonal rate not found", 404)};
+    if (!seasonalRate) {
+      throw new ApiError("Seasonal rate not found", 404);
+    }
 
-    const ownerTenantId = seasonalRate.room?.property?.tenantId || seasonalRate.property?.tenantId;
-    if (ownerTenantId !== tenant.id) { throw new ApiError("Unauthorized to view this seasonal rate ID", 403)};
+    const ownerTenantId =
+      seasonalRate.room?.property?.tenantId || seasonalRate.property?.tenantId;
+    if (ownerTenantId !== tenant.id) {
+      throw new ApiError("Unauthorized to view this seasonal rate ID", 403);
+    }
 
     return seasonalRate;
-  }
+  };
 
   updateSeasonalRate = async (
     id: number,
@@ -216,94 +259,89 @@ export class SeasonalRatesService {
     body: UpdateSeasonalRatesDTO
   ) => {
     const tenant = await resolveTenantByUserId(authUserId);
-
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const seasonalRate = await tx.seasonalRate.findUnique({
-        where: { id },
-        include: {
-          room: {
-            include: {
-              property: true,
-            },
+    const seasonalRate = await this.prisma.seasonalRate.findUnique({
+      where: { id },
+      include: {
+        room: {
+          include: {
+            property: true,
           },
-          property: true,
         },
-      });
-
-      if (!seasonalRate) {
-        throw new ApiError("Seasonal rate not found", 404);
-      }
-
-      // Check ownership
-      const ownerTenantId = seasonalRate.room?.property.tenantId || seasonalRate.property?.tenantId;
-      if (ownerTenantId !== tenant.id) {
-        throw new ApiError("Unauthorized to update this seasonal rate", 403);
-      }
-
-      const today = getTodayDateOnly();
-
-      if (seasonalRate.startDate < today) {
-        throw new ApiError(
-          "Cannot edit a seasonal rate that has already started",
-          400
-        );
-      }
-
-      const startDate = body.startDate
-        ? formattedDate(body.startDate)
-        : seasonalRate.startDate;
-      const endDate = body.endDate
-        ? formattedDate(body.endDate)
-        : seasonalRate.endDate;
-
-      if (startDate > endDate) {
-        throw new ApiError("Invalid date range", 400);
-      }
-
-      if (body.fixedPrice !== undefined && body.fixedPrice <= 0) {
-        throw new ApiError("Fixed price must be greater than 0", 400);
-      }
-
-      // Check for overlaps in the same scope
-      const scopeWhere = seasonalRate.roomId
-        ? { roomId: seasonalRate.roomId }
-        : { propertyId: seasonalRate.propertyId };
-
-      const overlapRate = await tx.seasonalRate.findFirst({
-        where: {
-          id: { not: id },
-          ...scopeWhere,
-          deletedAt: null,
-          startDate: { lt: endDate },
-          endDate: { gt: startDate },
-        },
-      });
-
-      if (overlapRate) {
-        throw new ApiError("Seasonal rate overlaps with existing rate", 400);
-      }
-
-      const updatedSeasonalRate = await tx.seasonalRate.update({
-        where: { id },
-        data: {
-          name: body.name ?? seasonalRate.name,
-          startDate: startDate,
-          endDate: endDate,
-          fixedPrice: body.fixedPrice ?? seasonalRate.fixedPrice,
-        },
-      });
-
-      const propertyId = seasonalRate.room?.property.id || seasonalRate.property!.id;
-      return { updatedSeasonalRate, propertyId };
+        property: true,
+      },
     });
 
-    await this.invalidatePropertySearchCache(updated.propertyId);
-    return updated.updatedSeasonalRate;
+    if (!seasonalRate) {
+      throw new ApiError("Seasonal rate not found", 404);
+    }
+    const ownerTenantId =
+      seasonalRate.room?.property.tenantId || seasonalRate.property?.tenantId;
+    if (ownerTenantId !== tenant.id) {
+      throw new ApiError("Unauthorized to update this seasonal rate", 403);
+    }
+
+    const today = getTodayDateOnly();
+
+    if (seasonalRate.startDate < today) {
+      throw new ApiError(
+        "Cannot edit a seasonal rate that has already started",
+        400
+      );
+    }
+
+    const startDate = body.startDate
+      ? formattedDate(body.startDate)
+      : seasonalRate.startDate;
+    const endDate = body.endDate
+      ? formattedDate(body.endDate)
+      : seasonalRate.endDate;
+
+    if (startDate > endDate) {
+      throw new ApiError("Invalid date range", 400);
+    }
+
+    if (body.fixedPrice !== undefined && body.fixedPrice <= 0) {
+      throw new ApiError("Fixed price must be greater than 0", 400);
+    }
+
+    const overlapWhere = seasonalRate.roomId
+      ? { roomId: seasonalRate.roomId }
+      : { propertyId: seasonalRate.propertyId };
+
+    const overlapRate = await this.prisma.seasonalRate.findFirst({
+      where: {
+        id: { not: id },
+        ...overlapWhere,
+        deletedAt: null,
+        startDate: { lt: endDate },
+        endDate: { gt: startDate },
+      },
+    });
+
+    if (overlapRate) {
+      throw new ApiError("Seasonal rate overlaps with existing rate", 400);
+    }
+
+    const updatedSeasonalRate = await this.prisma.seasonalRate.update({
+      where: { id },
+      data: {
+        name: body.name ?? seasonalRate.name,
+        startDate: startDate,
+        endDate: endDate,
+        fixedPrice: body.fixedPrice ?? seasonalRate.fixedPrice,
+      },
+    });
+
+    const propertyId =
+      seasonalRate.room?.property.id || seasonalRate.property!.id;
+
+    await this.invalidatePropertySearchCache(propertyId);
+    return updatedSeasonalRate;
   };
 
   deleteSeasonalRate = async (id: number, authUserId: number) => {
     const tenant = await resolveTenantByUserId(authUserId);
-    
+
     const seasonalRate = await this.prisma.seasonalRate.findUnique({
       where: { id },
       include: {
@@ -321,7 +359,8 @@ export class SeasonalRatesService {
     }
 
     // Check ownership
-    const ownerTenantId = seasonalRate.room?.property.tenantId || seasonalRate.property?.tenantId;
+    const ownerTenantId =
+      seasonalRate.room?.property.tenantId || seasonalRate.property?.tenantId;
     if (ownerTenantId !== tenant.id) {
       throw new ApiError("Unauthorized to delete this seasonal rate", 403);
     }
@@ -340,7 +379,8 @@ export class SeasonalRatesService {
       data: { deletedAt: new Date() },
     });
 
-    const propertyId = seasonalRate.room?.property.id || seasonalRate.property!.id;
+    const propertyId =
+      seasonalRate.room?.property.id || seasonalRate.property!.id;
     await this.invalidatePropertySearchCache(propertyId);
 
     return { message: "Seasonal rate deleted successfully" };

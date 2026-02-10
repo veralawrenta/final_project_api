@@ -52,7 +52,7 @@ export class RoomService {
   };
 
   getAllRoomsByTenant = async (authUserId: number, query: GetAllRoomsDTO) => {
-    const { page, take, sortBy, sortOrder } = query;
+    const { page, take, sortBy, sortOrder, search, propertyType } = query;
     const tenant = await resolveTenantByUserId(authUserId);
 
     const whereClause: Prisma.RoomWhereInput = {
@@ -60,8 +60,20 @@ export class RoomService {
       property: {
         tenantId: tenant.id,
         deletedAt: null,
+        ...(propertyType && { propertyType: propertyType }),
       },
     };
+
+    if (search) {
+      whereClause.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        {
+          property: {
+            name: { contains: search, mode: "insensitive" },
+          },
+        },
+      ];
+    }
 
     const rooms = await this.prisma.room.findMany({
       where: whereClause,
@@ -74,11 +86,14 @@ export class RoomService {
             name: true,
             category: true,
             city: true,
+            propertyType: true,
+            propertyStatus: true,
+            propertyImages: { where: { deletedAt: null } },
           },
         },
         roomImages: {
           where: { deletedAt: null },
-          select: { id: true, urlImages: true, isCover: true},
+          select: { id: true, urlImages: true, isCover: true },
         },
         roomNonAvailability: {
           where: { deletedAt: null },
@@ -99,17 +114,65 @@ export class RoomService {
 
   getRoomId = async (id: number) => {
     const room = await this.prisma.room.findUnique({
-      where: { id, deletedAt: null },
+      where: { id, deletedAt: null, property: { deletedAt: null } },
       include: {
-        property: true,
+        property: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            propertyStatus: true,
+            propertyType: true,
+            city: {
+              select: {
+                name: true,
+              },
+            },
+            category: {
+              select: { name: true },
+            },
+            propertyImages: {
+              where: { deletedAt: null },
+            },
+          },
+        },
         roomImages: {
           where: { deletedAt: null },
+          select: {
+            urlImages: true,
+            isCover: true,
+          }
         },
         roomNonAvailability: {
           where: { deletedAt: null },
+          select: {
+            id: true,
+            startDate: true,
+            endDate: true,
+            reason: true,
+          },
+        },
+        transactions: {
+          where: {
+            deletedAt: null,
+            status: {
+              in: [
+                "WAITING_FOR_PAYMENT",
+                "WAITING_FOR_CONFIRMATION",
+                "CONFIRMED",
+              ],
+            },
+          },
         },
         seasonalRates: {
           where: { deletedAt: null },
+          select: {
+            id: true,
+            name: true,
+            startDate: true,
+            endDate: true,
+            fixedPrice: true,
+          },
         },
       },
     });
@@ -120,44 +183,52 @@ export class RoomService {
     authUserId: number,
     propertyId: number,
     body: CreateRoomDTO,
-    urlImages : Express.Multer.File[],
+    urlImages: Express.Multer.File[]
   ) => {
+    const tenant = await resolveTenantByUserId(authUserId);
+    const property = await this.prisma.property.findFirst({
+      where: { id: propertyId, tenantId: tenant.id, deletedAt: null },
+      include: {
+        propertyImages: true,
+      },
+    });
+    if (!property) {
+      throw new ApiError("Property not found ", 404);
+    }
+
+    if (property.propertyImages.length === 0) {
+      throw new ApiError(
+        "Cannot create room. Please upload at least one property image first (Step 1)",
+        400
+      );
+    }
+
+    if (!urlImages || urlImages.length === 0) {
+      throw new ApiError("At least one room image is required", 400);
+    }
+    if (urlImages.length > 3) {
+      throw new ApiError("A room can have a maximum of 3 images", 400);
+    }
+
+    const existingRoom = await this.prisma.room.findFirst({
+      where: { name: body.name, propertyId: propertyId, deletedAt: null },
+    });
+    if (existingRoom) {
+      throw new ApiError(
+        "Room with the same name already exists in this property",
+        400
+      );
+    }
+    const uploadedImageUrls: string[] = [];
+    try {
+      for (const file of urlImages) {
+        const { secure_url } = await this.cloudinaryService.upload(file);
+        uploadedImageUrls.push(secure_url);
+      }
+    } catch (error) {
+      throw new ApiError("Failed to upload images to cloud storage", 500);
+    }
     return await this.prisma.$transaction(async (tx) => {
-      const tenant = await resolveTenantByUserId(authUserId);
-      const property = await tx.property.findFirst({
-        where: { id: propertyId, tenantId: tenant.id, deletedAt: null },
-        include: {
-          propertyImages: true,
-        },
-      });
-      if (!property) {
-        throw new ApiError("Property not found ", 404);
-      }
-
-      if (property.propertyImages.length === 0) {
-        throw new ApiError(
-          "Cannot create room. Please upload at least one property image first (Step 1)",
-          400
-        );
-      };
-
-      if (!urlImages || urlImages.length === 0) { throw new ApiError ("At least one room image is required", 400)};
-      if (urlImages.length > 10) {
-        throw new ApiError(
-          "A room can have a maximum of 10 images",
-          400
-        );
-      };
-
-      const existingRoom = await tx.room.findFirst({
-        where: { name: body.name, propertyId: propertyId, deletedAt: null },
-      });
-      if (existingRoom) {
-        throw new ApiError(
-          "Room with the same name already exists in this property",
-          400
-        );
-      }
       const room = await tx.room.create({
         data: {
           name: body.name,
@@ -169,15 +240,14 @@ export class RoomService {
         },
       });
       for (let i = 0; i < urlImages.length; i++) {
-        const { secure_url } = await this.cloudinaryService.upload(urlImages[i]);
         await tx.roomImage.create({
           data: {
             roomId: room.id,
-            urlImages: secure_url,
+            urlImages: uploadedImageUrls[i],
             isCover: i === 0,
           },
         });
-      };
+      }
       return await tx.room.findUnique({
         where: { id: room.id },
         include: {
@@ -271,7 +341,7 @@ export class RoomService {
       });
       if (roomsCount <= 1) {
         throw new ApiError(
-          "Published property must have at least one room",
+          "Cannot delete. Published property must have at least one room",
           400
         );
       }
@@ -287,15 +357,15 @@ export class RoomService {
         data: { deletedAt: new Date() },
       }),
       this.prisma.roomImage.updateMany({
-        where: { roomId: id },
+        where: { roomId: id, deletedAt: null },
         data: { deletedAt: new Date() },
       }),
-      /*this.prisma.seasonalRate.updateMany({
-        where: { roomId: id },
+      this.prisma.seasonalRate.updateMany({
+        where: { roomId: id, propertyId: null, deletedAt: null },
         data: { deletedAt: new Date() },
-      }),*/
+      }),
       this.prisma.roomNonAvailability.updateMany({
-        where: { roomId: id },
+        where: { roomId: id, deletedAt: null },
         data: { deletedAt: new Date() },
       }),
     ]);

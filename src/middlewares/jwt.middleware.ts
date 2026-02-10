@@ -5,9 +5,6 @@ import { ApiError } from "../utils/api-error";
 export class JWTMiddleware {
   verifyToken = (secretKey: string) => {
     return (req: Request, res: Response, next: NextFunction) => {
-      
-      console.log("AUTH HEADER:", req.headers.authorization);
-
       const token =
         req.headers.authorization?.split(" ")[1] || (req.query.token as string);
 

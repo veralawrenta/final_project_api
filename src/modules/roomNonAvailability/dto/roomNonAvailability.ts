@@ -1,4 +1,6 @@
 import {
+  IsDateString,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -29,11 +31,11 @@ export class CreateRoomNonAvailabilityDTO {
 
 export class UpdateRoomNonAvailabilityDTO {
   @IsOptional()
-  @IsDateOnly()
+  @IsDateString()
   startDate?: string;
 
   @IsOptional()
-  @IsDateOnly()
+  @IsDateString()
   endDate?: string;
 
   @IsOptional()
@@ -50,4 +52,12 @@ export class GetRoomNonAvailabilitiesByTenant extends PaginationQueryParams {
   @IsOptional()
   @IsString()
   search?: string ="";
+
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sortOrder: 'asc' | 'desc' = "desc";
+
+  @IsOptional()
+  @IsString()
+  sortBy: string = "createdAt";
 }

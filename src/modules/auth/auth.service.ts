@@ -26,7 +26,6 @@ export class AuthService {
   }
 
   registerUserEmail = async (body: RegisterUserDTO) => {
-    console.log("REGISTER SERVICE INPUT:", body);
     const existingUser = await this.prisma.user.findUnique({
       where: { email: body.email },
     });
@@ -41,14 +40,12 @@ export class AuthService {
         isVerified: false,
       },
     });
-    console.log("New user created:", user.id);
 
     const payload = { id: user.id, role: user.role };
     const token = jwt.sign(payload, process.env.JWT_VERIFY_SECRET!, {
       expiresIn: "1h",
     });
     const expiresAt = addHours(new Date(), 1);
-    console.log("TOKEN GENERATED");
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -57,7 +54,6 @@ export class AuthService {
         expiresAt,
       },
     });
-    console.log("TOKEN SAVED");
 
     let sendEmail = await this.mailService.sendMail(
       user.email,
@@ -67,12 +63,10 @@ export class AuthService {
         UserVerificationLink: `${process.env.FRONTEND_URL}/auth/set-password?token=${token}`,
       }
     );
-    console.log("EMAIL SENT");
     return { message: "Please check your email to verify your account" };
   };
 
   registerTenantEmail = async (body: RegisterTenantDTO) => {
-    console.log("REGISTER TENANT INPUT:", body);
     const currentUser = await this.prisma.user.findUnique({
       where: { email: body.email },
     });
@@ -91,12 +85,6 @@ export class AuthService {
           },
         },
       },
-    });
-
-    console.log("CREATED USER:", {
-      id: user.id,
-      email: user.email,
-      role: user.role,
     });
 
     const payload = { id: user.id, role: user.role };
@@ -121,7 +109,6 @@ export class AuthService {
         TenantVerificationLink: `${process.env.FRONTEND_URL}/auth/set-password?token=${token}`,
       }
     );
-    console.log({ message: "email sent successful", sendEmail });
     return { message: "Please check your email to verify your account" };
   };
 
@@ -383,7 +370,6 @@ export class AuthService {
     const token = jwt.sign(payload, process.env.JWT_CHANGE_EMAIL_SECRET!, {
       expiresIn: "1h",
     });
-    console.log("CHANGE EMAIL SECRET:", process.env.JWT_CHANGE_EMAIL_SECRET);
     const expiresAt = addHours(new Date(), 1);
 
     const updatedUser = await this.prisma.user.update({
@@ -404,7 +390,6 @@ export class AuthService {
         ChangeEmailVerificationLink: `${process.env.FRONTEND_URL}/auth/verify-email-change?token=${token}`,
       }
     );
-    console.log("Email sent:", sendEmail);
     return {
       message: "Please check your email to verify the new email address",
     };

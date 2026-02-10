@@ -1,5 +1,7 @@
 import {
   IsArray,
+  IsEnum,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -10,6 +12,7 @@ import {
 import { PaginationQueryParams } from "../../pagination/dto/pagination.dto";
 import { Type } from "class-transformer";
 import { CreateRoomImageDTO } from "../../roomImage/dto/roomImage.dto";
+import { PropertyType } from "../../../../generated/prisma/enums";
 
 export class CreateRoomDTO {
   @IsNotEmpty()
@@ -77,4 +80,13 @@ export class GetAllRoomsDTO extends PaginationQueryParams {
   @IsOptional()
   @IsString()
   search?: string = "";
+
+  @IsOptional()
+  @IsEnum(PropertyType)
+  propertyType?: PropertyType;
+
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sortOrder: 'asc' | 'desc' = "desc";
+  
 }

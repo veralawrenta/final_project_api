@@ -1,5 +1,6 @@
 import {
   IsDateString,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -42,11 +43,11 @@ export class UpdateSeasonalRatesDTO {
   name?: string;
 
   @IsOptional()
-  @IsDateOnly()
+  @IsDateString()
   startDate?: string;
 
   @IsOptional()
-  @IsDateOnly()
+  @IsDateString()
   endDate?: string;
 
   @IsOptional()
@@ -59,4 +60,12 @@ export class GetSeasonalRatesDTO extends PaginationQueryParams {
   @IsOptional()
   @IsString()
   search?: string = "";
+
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sortOrder: 'asc' | 'desc' = "desc";
+
+  @IsOptional()
+  @IsString()
+  sortBy: string = "createdAt";
 }

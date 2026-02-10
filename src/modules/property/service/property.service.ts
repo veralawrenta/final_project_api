@@ -245,7 +245,7 @@ export class PropertyService {
         fixedPrice: true,
       },
     });
-    //map all seasonal prices by property
+
     const propertyRatesMap = new Map<number, typeof propertySeasonalRates>();
     for (const rate of propertySeasonalRates) {
       if (!propertyRatesMap.has(rate.propertyId!)) {
@@ -396,7 +396,6 @@ export class PropertyService {
         (r) => checkInDate < r.endDate && checkOutDate > r.startDate
       );
       const effectiveSeasonalRate = roomSeasonalRate || propertySeasonalRate;
-      //check the available room prices
       const displayPrice = isAvailable
         ? effectiveSeasonalRate
           ? effectiveSeasonalRate.fixedPrice
@@ -467,9 +466,7 @@ export class PropertyService {
         },
       },
     });
-    if (properties.length === 0) {
-      throw new ApiError("No properties found for this tenant", 400);
-    }
+
     const data = properties.map((property) => {
       const hasPropertyImages = property.propertyImages.length > 0;
 
@@ -495,9 +492,6 @@ export class PropertyService {
         totalRooms: property.rooms.length,
         propertyImages: property.propertyImages,
         status: property.propertyStatus
-          /*hasPropertyImages && publishableRooms.length > 0
-            ? "PUBLISHED"
-            : "DRAFT",*/
       };
     });
     const count = await this.prisma.property.count({
@@ -920,7 +914,6 @@ export class PropertyService {
         throw new ApiError("Property not found", 404);
       }
   
-      // Guards
       if (property.rooms.some((r) => r.transactions.length > 0)) {
         throw new ApiError(
           "Cannot delete property with active or upcoming bookings",
@@ -981,12 +974,9 @@ export class PropertyService {
   
       return { success: true };
     } catch (err) {
-      console.error("DELETE PROPERTY ERROR >>>", err);
-  
       if (err instanceof ApiError) {
         throw err;
       }
-  
       throw new ApiError(
         "Internal server error while deleting property",
         500
