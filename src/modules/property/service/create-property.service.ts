@@ -101,7 +101,7 @@ export class CreatePropertyService {
           data: {
             name: body.name,
             description: body.description,
-            categoryId: body.categoryId,
+            categoryId: body.categoryId || null,
             cityId: body.cityId,
             propertyType: body.propertyType,
             address: body.address,
