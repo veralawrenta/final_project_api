@@ -1,14 +1,14 @@
-import { Prisma, PrismaClient } from "../../../generated/prisma/client";
-import { prisma } from "../../lib/prisma";
-import { ApiError } from "../../utils/api-error";
-import { formattedDate, getTodayDateOnly } from "../../utils/date.utils";
-import { RedisService } from "../redis/redis.service";
-import { TenantService } from "../tenant/resolve-tenant";
+import { Prisma, PrismaClient } from "../../../generated/prisma/client.js";
+import { prisma } from "../../lib/prisma.js";
+import { ApiError } from "../../utils/api-error.js";
+import { formattedDate, getTodayDateOnly } from "../../utils/date.utils.js";
+import { RedisService } from "../redis/redis.service.js";
+import { TenantService } from "../tenant/resolve-tenant.js";
 import {
   CreateRoomNonAvailabilityDTO,
   GetRoomNonAvailabilitiesByTenant,
   UpdateRoomNonAvailabilityDTO,
-} from "./dto/roomNonAvailability";
+} from "./dto/roomNonAvailability.js";
 
 
 export class RoomNonAvailabilityService {

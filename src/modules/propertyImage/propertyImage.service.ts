@@ -1,11 +1,11 @@
-import { PrismaClient, PropertyStatus } from "../../../generated/prisma/client";
-import { CloudinaryService } from "../../cloudinary/cloudinary.service";
-import { prisma } from "../../lib/prisma";
-import { ApiError } from "../../utils/api-error";
-import { TenantService } from "../tenant/resolve-tenant";
+import { PrismaClient, PropertyStatus } from "../../../generated/prisma/client.js";
+import { CloudinaryService } from "../../cloudinary/cloudinary.service.js";
+import { prisma } from "../../lib/prisma.js";
+import { ApiError } from "../../utils/api-error.js";
+import { TenantService } from "../tenant/resolve-tenant.js";
 import {
   CreatePropertyImageDTO
-} from "./dto/propertyImage.dto";
+} from "./dto/propertyImage.dto.js";
 
 export class PropertyImagesService {
   private prisma: PrismaClient;

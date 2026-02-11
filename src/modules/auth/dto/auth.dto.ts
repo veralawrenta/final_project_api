@@ -1,5 +1,4 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Matches, MinLength } from "class-validator";
-import { Provider, Role } from "../../../../generated/prisma/enums";
+import { IsEmail, IsNotEmpty, IsString, MinLength } from "class-validator";
 
 export class RegisterUserDTO {
   @IsNotEmpty()

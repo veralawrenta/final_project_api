@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { CategoryController } from "./category.controller";
-import { JWTMiddleware } from "../../middlewares/jwt.middleware";
-import { RoleMiddleware } from "../../middlewares/role.middleware";
+import { CategoryController } from "./category.controller.js";
+import { JWTMiddleware } from "../../middlewares/jwt.middleware.js";
+import { RoleMiddleware } from "../../middlewares/role.middleware.js";
 
 export class CategoryRouter {
   router: Router;

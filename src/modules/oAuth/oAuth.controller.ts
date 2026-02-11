@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
-import { OAuthService } from "./oAuth.service";
-import { ApiError } from "../../utils/api-error";
+import { OAuthService } from "./oAuth.service.js";
+import { ApiError } from "../../utils/api-error.js";
 
 
 export class OAuthController {

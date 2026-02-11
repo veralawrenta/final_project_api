@@ -1,8 +1,8 @@
 import { plainToInstance } from "class-transformer";
 import { Request, Response } from "express";
-import { ApiError } from "../../utils/api-error";
-import { CreatePropertyImageDTO } from "./dto/propertyImage.dto";
-import { PropertyImagesService } from "./propertyImage.service";
+import { ApiError } from "../../utils/api-error.js";
+import { CreatePropertyImageDTO } from "./dto/propertyImage.dto.js";
+import { PropertyImagesService } from "./propertyImage.service.js";
 
 export class PropertyImagesController {
   private propertyImagesService: PropertyImagesService;

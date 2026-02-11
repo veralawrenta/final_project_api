@@ -1,12 +1,12 @@
 import { Request, Response } from "express";
-import { RoomNonAvailabilityService } from "./roomNonAvailability.service";
+import { RoomNonAvailabilityService } from "./roomNonAvailability.service.js";
 import { plainToInstance } from "class-transformer";
 import {
   CreateRoomNonAvailabilityDTO,
   GetRoomNonAvailabilitiesByTenant,
   UpdateRoomNonAvailabilityDTO,
-} from "./dto/roomNonAvailability";
-import { ApiError } from "../../utils/api-error";
+} from "./dto/roomNonAvailability.js";
+import { ApiError } from "../../utils/api-error.js";
 
 export class RoomNonAvailabilityController {
   roomNonAvailabilityService: RoomNonAvailabilityService;

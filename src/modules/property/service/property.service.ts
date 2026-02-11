@@ -2,24 +2,24 @@ import {
   Prisma,
   PrismaClient,
   PropertyStatus,
-} from "../../../../generated/prisma/client";
-import { prisma } from "../../../lib/prisma";
-import { ApiError } from "../../../utils/api-error";
+} from "../../../../generated/prisma/client.js";
+import { prisma } from "../../../lib/prisma.js";
+import { ApiError } from "../../../utils/api-error.js";
 import {
   formattedDate,
   getTodayDateOnly,
   toDateOnlyString,
-} from "../../../utils/date.utils";
-import { RedisService } from "../../redis/redis.service";
+} from "../../../utils/date.utils.js";
+import { RedisService } from "../../redis/redis.service.js";
 import crypto from "node:crypto";
 import {
   GetAllPropertiesDTO,
   GetPropertyAvailabilityQueryDTO,
   GetSearchAvailablePropertiesDTO,
   UpdatePropertyDTO,
-} from "../dto/property.dto";
-import { AmenityService } from "../../amenity/amenity.service";
-import { TenantService } from "../../tenant/resolve-tenant";
+} from "../dto/property.dto.js";
+import { AmenityService } from "../../amenity/amenity.service.js";
+import { TenantService } from "../../tenant/resolve-tenant.js";
 
 export class PropertyService {
   private prisma: PrismaClient;

@@ -1,20 +1,20 @@
 import { Router } from "express";
-import { JWT_ACCESS_SECRET } from "../../config/env";
-import { JWTMiddleware } from "../../middlewares/jwt.middleware";
-import { RoleMiddleware } from "../../middlewares/role.middleware";
+import { JWT_ACCESS_SECRET } from "../../config/env.js";
+import { JWTMiddleware } from "../../middlewares/jwt.middleware.js";
+import { RoleMiddleware } from "../../middlewares/role.middleware.js";
 import {
   validateBody,
   validateQuery,
-} from "../../middlewares/validation.middleware";
-import { PropertyImagesController } from "../propertyImage/propertyImage.controller";
+} from "../../middlewares/validation.middleware.js";
+import { PropertyImagesController } from "../propertyImage/propertyImage.controller.js";
 import {
   CreatePropertyDTO,
   GetPropertyAvailabilityQueryDTO,
   GetSearchAvailablePropertiesDTO,
   UpdatePropertyDTO,
-} from "./dto/property.dto";
-import { PropertyController } from "./property.controller";
-import { UploaderMiddleware } from "../../middlewares/uploader.middleware";
+} from "./dto/property.dto.js";
+import { PropertyController } from "./property.controller.js";
+import { UploaderMiddleware } from "../../middlewares/uploader.middleware.js";
 
 export class PropertyRouter {
   router: Router;

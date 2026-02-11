@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { JWTMiddleware } from "../../middlewares/jwt.middleware";
-import { RoleMiddleware } from "../../middlewares/role.middleware";
-import { UploaderMiddleware } from "../../middlewares/uploader.middleware";
-import { validateBody } from "../../middlewares/validation.middleware";
-import { CreateRoomImageDTO, UpdateRoomImageDTO } from "./dto/roomImage.dto";
-import { RoomImagesController } from "./roomImage.controller";
+import { JWTMiddleware } from "../../middlewares/jwt.middleware.js";
+import { RoleMiddleware } from "../../middlewares/role.middleware.js";
+import { UploaderMiddleware } from "../../middlewares/uploader.middleware.js";
+import { validateBody } from "../../middlewares/validation.middleware.js";
+import { CreateRoomImageDTO, UpdateRoomImageDTO } from "./dto/roomImage.dto.js";
+import { RoomImagesController } from "./roomImage.controller.js";
 
 export class RoomImageRouter {
   router: Router;

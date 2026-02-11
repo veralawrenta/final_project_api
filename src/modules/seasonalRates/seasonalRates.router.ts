@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { JWTMiddleware } from "../../middlewares/jwt.middleware";
-import { RoleMiddleware } from "../../middlewares/role.middleware";
-import { validateBody } from "../../middlewares/validation.middleware";
+import { JWTMiddleware } from "../../middlewares/jwt.middleware.js";
+import { RoleMiddleware } from "../../middlewares/role.middleware.js";
+import { validateBody } from "../../middlewares/validation.middleware.js";
 import {
   CreateSeasonalRatesDTO,
   UpdateSeasonalRatesDTO,
-} from "./dto/seasonalRates.dto";
-import { SeasonalRateController } from "./seasonalRates.controller";
+} from "./dto/seasonalRates.dto.js";
+import { SeasonalRateController } from "./seasonalRates.controller.js";
 
 export class SeasonalRateRouter {
   router: Router;

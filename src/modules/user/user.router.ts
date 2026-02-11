@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { UserController } from "./user.controller";
-import { UploaderMiddleware } from "../../middlewares/uploader.middleware";
-import { JWTMiddleware } from "../../middlewares/jwt.middleware";
-import { JWT_ACCESS_SECRET } from "../../config/env";
-import { validateBody } from "../../middlewares/validation.middleware";
-import { UpdateDataTenantDTO, UpdateDataUserDTO } from "./dto/user-dto";
+import { UserController } from "./user.controller.js";
+import { UploaderMiddleware } from "../../middlewares/uploader.middleware.js";
+import { JWTMiddleware } from "../../middlewares/jwt.middleware.js";
+import { JWT_ACCESS_SECRET } from "../../config/env.js";
+import { validateBody } from "../../middlewares/validation.middleware.js";
+import { UpdateDataTenantDTO, UpdateDataUserDTO } from "./dto/user-dto.js";
 
 export class UserRouter {
   router: Router;

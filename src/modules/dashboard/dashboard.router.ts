@@ -1,10 +1,8 @@
 import { Router } from "express";
-import { JWTMiddleware } from "../../middlewares/jwt.middleware";
-import { RoleMiddleware } from "../../middlewares/role.middleware";
-import { UploaderMiddleware } from "../../middlewares/uploader.middleware";
-import { validateBody } from "../../middlewares/validation.middleware";
-import { CreatePropertyImageDTO } from "../propertyImage/dto/propertyImage.dto";
-import { DashboardController } from "./dashboard.controller";
+import { JWTMiddleware } from "../../middlewares/jwt.middleware.js";
+import { RoleMiddleware } from "../../middlewares/role.middleware.js";
+import { UploaderMiddleware } from "../../middlewares/uploader.middleware.js";
+import { DashboardController } from "./dashboard.controller.js";
 
 export class DashboardRouter {
   router: Router;

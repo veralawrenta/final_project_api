@@ -1,5 +1,5 @@
 import { formatInTimeZone } from "date-fns-tz";
-import { ApiError } from "./api-error";
+import { ApiError } from "./api-error.js";
 
 export const PROPERTY_TIMEZONE = "Asia/Jakarta";
 export const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/; 

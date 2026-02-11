@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { OAuthController } from "./oAuth.controller";
+import { OAuthController } from "./oAuth.controller.js";
 
 export class OAuthRouter {
     private router: Router;

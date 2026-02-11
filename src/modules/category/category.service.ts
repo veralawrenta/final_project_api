@@ -1,12 +1,12 @@
-import { Prisma, PrismaClient } from "../../../generated/prisma/client";
-import { prisma } from "../../lib/prisma";
-import { ApiError } from "../../utils/api-error";
-import { TenantService } from "../tenant/resolve-tenant";
+import { Prisma, PrismaClient } from "../../../generated/prisma/client.js";
+import { prisma } from "../../lib/prisma.js";
+import { ApiError } from "../../utils/api-error.js";
+import { TenantService } from "../tenant/resolve-tenant.js";
 import {
   CreateCategoryDTO,
   GetAllCategoriesDTO,
   UpdateCategoryDTO,
-} from "./dto/category.dto";
+} from "./dto/category.dto.js";
 
 export class CategoryService {
   private prisma: PrismaClient;

@@ -1,5 +1,5 @@
 import { IsNotEmpty, IsOptional, IsString } from "class-validator";
-import { PaginationQueryParams } from "../../pagination/dto/pagination.dto";
+import { PaginationQueryParams } from "../../pagination/dto/pagination.dto.js";
 
 export class CreateCategoryDTO {
     @IsNotEmpty()

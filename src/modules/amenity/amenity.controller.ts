@@ -1,6 +1,5 @@
-import { plainToInstance } from "class-transformer";
 import { Request, Response } from "express";
-import { AmenityService } from "./amenity.service";
+import { AmenityService } from "./amenity.service.js";
 
 export class AmenityController {
   private amenityService: AmenityService;

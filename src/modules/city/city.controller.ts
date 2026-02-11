@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { CityService } from "./city.service";
+import { CityService } from "./city.service.js";
 
 export class CityController {
   private cityService: CityService;

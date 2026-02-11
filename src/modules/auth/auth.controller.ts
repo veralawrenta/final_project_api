@@ -1,7 +1,6 @@
 import { plainToInstance } from "class-transformer";
 import { Request, Response } from "express";
-import { ApiError } from "../../utils/api-error";
-import { AuthService } from "./auth.service";
+import { AuthService } from "./auth.service.js";
 import {
   ChangePasswordDTO,
   ForgotPasswordDTO,
@@ -10,7 +9,7 @@ import {
   RegisterUserDTO,
   ResetPasswordDTO,
   SetPasswordDTO,
-} from "./dto/auth.dto";
+} from "./dto/auth.dto.js";
 
 export class AuthController {
   private authService: AuthService;

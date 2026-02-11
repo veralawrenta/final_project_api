@@ -1,5 +1,5 @@
 import { Transform } from "class-transformer";
-import { IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
+import { IsNumber, IsOptional, IsString } from "class-validator";
 
 
 export class PaginationQueryParams {

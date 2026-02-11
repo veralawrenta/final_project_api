@@ -1,10 +1,10 @@
 import { addHours } from "date-fns";
 import jwt from "jsonwebtoken";
-import { PrismaClient, Provider, Role } from "../../../generated/prisma/client";
-import { prisma } from "../../lib/prisma";
-import { ApiError } from "../../utils/api-error";
-import { comparePassword, hashPassword } from "../../utils/password";
-import { MailService } from "../mail/mail.service";
+import { PrismaClient, Provider, Role } from "../../../generated/prisma/client.js";
+import { prisma } from "../../lib/prisma.js";
+import { ApiError } from "../../utils/api-error.js";
+import { comparePassword, hashPassword } from "../../utils/password.js";
+import { MailService } from "../mail/mail.service.js";
 import {
   ChangePasswordDTO,
   ForgotPasswordDTO,
@@ -14,7 +14,7 @@ import {
   ResendVerificationDTO,
   ResetPasswordDTO,
   SetPasswordDTO,
-} from "./dto/auth.dto";
+} from "./dto/auth.dto.js";
 
 export class AuthService {
   private prisma: PrismaClient;

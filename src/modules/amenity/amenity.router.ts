@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { AmenityController } from "./amenity.controller";
+import { AmenityController } from "./amenity.controller.js";
 
 export class AmenityRouter {
   router: Router;

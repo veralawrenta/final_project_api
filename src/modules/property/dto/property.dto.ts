@@ -9,10 +9,10 @@ import {
   Min,
   ValidateNested,
 } from "class-validator";
-import { Prisma } from "../../../../generated/prisma/client";
-import { PropertyType } from "../../../../generated/prisma/enums";
-import { IsDateOnly } from "../../../validators/is-date-only.validator";
-import { PaginationQueryParams } from "../../pagination/dto/pagination.dto";
+import { Prisma } from "../../../../generated/prisma/client.js";
+import { PropertyType } from "../../../../generated/prisma/enums.js";
+import { IsDateOnly } from "../../../validators/is-date-only.validator.js";
+import { PaginationQueryParams } from "../../pagination/dto/pagination.dto.js";
 
 export enum PropertySortBy {
   NAME = "name",
@@ -29,7 +29,7 @@ export class GetSearchAvailablePropertiesDTO extends PaginationQueryParams {
   @IsNumber()
   @Transform(({ value }) => parseInt(value, 10))
   cityId!: number;
-
+  
   @IsNotEmpty()
   @IsDateOnly()
   checkIn!: string;

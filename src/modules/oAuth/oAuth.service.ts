@@ -1,7 +1,7 @@
 
-import { PrismaClient, Role } from "../../../generated/prisma/client";
-import { prisma } from "../../lib/prisma";
-import { ApiError } from "../../utils/api-error";
+import { PrismaClient, Role } from "../../../generated/prisma/client.js";
+import { prisma } from "../../lib/prisma.js";
+import { ApiError } from "../../utils/api-error.js";
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 

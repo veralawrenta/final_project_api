@@ -1,6 +1,6 @@
-import { Prisma, PrismaClient } from "../../../generated/prisma/client";
-import { prisma } from "../../lib/prisma";
-import { ApiError } from "../../utils/api-error";
+import { Prisma, PrismaClient } from "../../../generated/prisma/client.js";
+import { prisma } from "../../lib/prisma.js";
+import { ApiError } from "../../utils/api-error.js";
 
 export class AmenityService {
   private prisma: PrismaClient;

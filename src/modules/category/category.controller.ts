@@ -1,12 +1,12 @@
 import { plainToInstance } from "class-transformer";
 import { Request, Response } from "express";
-import { ApiError } from "../../utils/api-error";
-import { CategoryService } from "./category.service";
+import { ApiError } from "../../utils/api-error.js";
+import { CategoryService } from "./category.service.js";
 import {
   CreateCategoryDTO,
   GetAllCategoriesDTO,
   UpdateCategoryDTO,
-} from "./dto/category.dto";
+} from "./dto/category.dto.js";
 
 export class CategoryController {
   private categoryService: CategoryService;

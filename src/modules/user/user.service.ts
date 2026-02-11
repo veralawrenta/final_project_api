@@ -1,9 +1,8 @@
-import { auth } from "googleapis/build/src/apis/abusiveexperiencereport";
-import { PrismaClient, Role } from "../../../generated/prisma/client";
-import { CloudinaryService } from "../../cloudinary/cloudinary.service";
-import { prisma } from "../../lib/prisma";
-import { ApiError } from "../../utils/api-error";
-import { UpdateDataTenantDTO, UpdateDataUserDTO } from "./dto/user-dto";
+import { PrismaClient, Role } from "../../../generated/prisma/client.js";
+import { CloudinaryService } from "../../cloudinary/cloudinary.service.js";
+import { prisma } from "../../lib/prisma.js";
+import { ApiError } from "../../utils/api-error.js";
+import { UpdateDataTenantDTO, UpdateDataUserDTO } from "./dto/user-dto.js";
 
 export class UserService {
   private prisma: PrismaClient;

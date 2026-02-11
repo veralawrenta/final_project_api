@@ -2,17 +2,17 @@ import {
   Prisma,
   PrismaClient,
   PropertyStatus,
-} from "../../../generated/prisma/client";
-import { prisma } from "../../lib/prisma";
-import { ApiError } from "../../utils/api-error";
-import { getTodayDateOnly, formattedDate } from "../../utils/date.utils";
-import { RedisService } from "../redis/redis.service";
-import { TenantService } from "../tenant/resolve-tenant";
+} from "../../../generated/prisma/client.js";
+import { prisma } from "../../lib/prisma.js";
+import { ApiError } from "../../utils/api-error.js";
+import { getTodayDateOnly, formattedDate } from "../../utils/date.utils.js";
+import { RedisService } from "../redis/redis.service.js";
+import { TenantService } from "../tenant/resolve-tenant.js";
 import {
   CreateSeasonalRatesDTO,
   GetSeasonalRatesDTO,
   UpdateSeasonalRatesDTO,
-} from "./dto/seasonalRates.dto";
+} from "./dto/seasonalRates.dto.js";
 
 export class SeasonalRatesService {
   private prisma: PrismaClient;

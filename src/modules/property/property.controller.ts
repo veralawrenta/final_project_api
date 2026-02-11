@@ -1,6 +1,6 @@
 import { plainToInstance } from "class-transformer";
 import { Request, Response } from "express";
-import { ApiError } from "../../utils/api-error";
+import { ApiError } from "../../utils/api-error.js";
 import {
   CreatePropertyDTO,
   GetAllPropertiesDTO,
@@ -8,9 +8,9 @@ import {
   GetSearchAvailablePropertiesDTO,
   PublishPropertyDTO,
   UpdatePropertyDTO,
-} from "./dto/property.dto";
-import { PropertyService } from "./service/property.service";
-import { CreatePropertyService } from "./service/create-property.service";
+} from "./dto/property.dto.js";
+import { PropertyService } from "./service/property.service.js";
+import { CreatePropertyService } from "./service/create-property.service.js";
 
 export class PropertyController {
   private propertyService: PropertyService;

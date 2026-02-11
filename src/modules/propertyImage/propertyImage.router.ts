@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { JWTMiddleware } from "../../middlewares/jwt.middleware";
-import { RoleMiddleware } from "../../middlewares/role.middleware";
-import { UploaderMiddleware } from "../../middlewares/uploader.middleware";
-import { PropertyImagesController } from "./propertyImage.controller";
-import { CreatePropertyImageDTO } from "./dto/propertyImage.dto";
-import { validateBody } from "../../middlewares/validation.middleware";
+import { JWTMiddleware } from "../../middlewares/jwt.middleware.js";
+import { RoleMiddleware } from "../../middlewares/role.middleware.js";
+import { UploaderMiddleware } from "../../middlewares/uploader.middleware.js";
+import { PropertyImagesController } from "./propertyImage.controller.js";
+import { CreatePropertyImageDTO } from "./dto/propertyImage.dto.js";
+import { validateBody } from "../../middlewares/validation.middleware.js";
 
 export class PropertyImagesRouter {
   router: Router;

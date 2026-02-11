@@ -1,8 +1,8 @@
 import { plainToInstance } from "class-transformer";
 import { Request, Response } from "express";
-import { ApiError } from "../../utils/api-error";
-import { CreateRoomDTO, GetAllRoomsDTO, UpdateRoomDTO } from "./dto/room.dto";
-import { RoomService } from "./room.service";
+import { ApiError } from "../../utils/api-error.js";
+import { CreateRoomDTO, GetAllRoomsDTO, UpdateRoomDTO } from "./dto/room.dto.js";
+import { RoomService } from "./room.service.js";
 
 export class RoomController {
   roomService: RoomService;

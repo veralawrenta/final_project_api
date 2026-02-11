@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { JWTMiddleware } from "../../middlewares/jwt.middleware";
-import { RoleMiddleware } from "../../middlewares/role.middleware";
-import { UploaderMiddleware } from "../../middlewares/uploader.middleware";
-import { validateBody } from "../../middlewares/validation.middleware";
-import { CreateRoomDTO, UpdateRoomDTO } from "./dto/room.dto";
-import { RoomController } from "./room.controller";
+import { JWTMiddleware } from "../../middlewares/jwt.middleware.js";
+import { RoleMiddleware } from "../../middlewares/role.middleware.js";
+import { UploaderMiddleware } from "../../middlewares/uploader.middleware.js";
+import { validateBody } from "../../middlewares/validation.middleware.js";
+import { CreateRoomDTO, UpdateRoomDTO } from "./dto/room.dto.js";
+import { RoomController } from "./room.controller.js";
 
 export class RoomRouter {
   router: Router;

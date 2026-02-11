@@ -1,4 +1,4 @@
-import { connection } from "../../config/redis";
+import { connection } from "../../config/redis.js";
 
 
 export class RedisService {

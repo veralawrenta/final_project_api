@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import { RoomImagesService } from "./roomImage.service";
-import { ApiError } from "../../utils/api-error";
+import { RoomImagesService } from "./roomImage.service.js";
+import { ApiError } from "../../utils/api-error.js";
 import { plainToInstance } from "class-transformer";
-import { CreateRoomImageDTO, UpdateRoomImageDTO } from "./dto/roomImage.dto";
+import { CreateRoomImageDTO, UpdateRoomImageDTO } from "./dto/roomImage.dto.js";
 
 export class RoomImagesController {
   private roomImagesService: RoomImagesService;

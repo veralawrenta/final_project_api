@@ -2,14 +2,14 @@ import {
   PrismaClient,
   PropertyStatus,
   Tenant,
-} from "../../../../generated/prisma/client";
-import { CloudinaryService } from "../../../cloudinary/cloudinary.service";
-import { prisma } from "../../../lib/prisma";
-import { ApiError } from "../../../utils/api-error";
-import { AmenityService } from "../../amenity/amenity.service";
-import { RedisService } from "../../redis/redis.service";
-import { TenantService } from "../../tenant/resolve-tenant";
-import { CreatePropertyDTO } from "../dto/property.dto";
+} from "../../../../generated/prisma/client.js";
+import { CloudinaryService } from "../../../cloudinary/cloudinary.service.js";
+import { prisma } from "../../../lib/prisma.js";
+import { ApiError } from "../../../utils/api-error.js";
+import { AmenityService } from "../../amenity/amenity.service.js";
+import { RedisService } from "../../redis/redis.service.js";
+import { TenantService } from "../../tenant/resolve-tenant.js";
+import { CreatePropertyDTO } from "../dto/property.dto.js";
 
 export class CreatePropertyService {
   private prisma: PrismaClient;

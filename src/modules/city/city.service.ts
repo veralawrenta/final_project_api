@@ -1,5 +1,5 @@
-import { PrismaClient } from "../../../generated/prisma/client";
-import { prisma } from "../../lib/prisma";
+import { PrismaClient } from "../../../generated/prisma/client.js";
+import { prisma } from "../../lib/prisma.js";
 
 export class CityService {
     private prisma: PrismaClient;

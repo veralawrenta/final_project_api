@@ -1,5 +1,5 @@
 import { Transform } from "class-transformer";
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, Max, Min } from "class-validator";
+import { IsBoolean, IsNotEmpty, IsOptional } from "class-validator";
 
 export class CreateRoomImageDTO {
   @IsNotEmpty()

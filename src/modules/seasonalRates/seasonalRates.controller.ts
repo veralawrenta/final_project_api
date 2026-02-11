@@ -1,9 +1,8 @@
 import { Request, Response } from "express";
-
 import { plainToInstance } from "class-transformer";
-import { CreateSeasonalRatesDTO, GetSeasonalRatesDTO, UpdateSeasonalRatesDTO } from "./dto/seasonalRates.dto";
-import { SeasonalRatesService } from "./seasonalRates.service";
-import { ApiError } from "../../utils/api-error";
+import { CreateSeasonalRatesDTO, GetSeasonalRatesDTO, UpdateSeasonalRatesDTO } from "./dto/seasonalRates.dto.js";
+import { SeasonalRatesService } from "./seasonalRates.service.js";
+import { ApiError } from "../../utils/api-error.js";
 
 export class SeasonalRateController {
   private seasonalRateService: SeasonalRatesService;

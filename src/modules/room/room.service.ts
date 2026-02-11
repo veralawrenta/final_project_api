@@ -2,12 +2,12 @@ import {
   Prisma,
   PrismaClient,
   PropertyStatus,
-} from "../../../generated/prisma/client";
-import { CloudinaryService } from "../../cloudinary/cloudinary.service";
-import { prisma } from "../../lib/prisma";
-import { ApiError } from "../../utils/api-error";
-import { TenantService } from "../tenant/resolve-tenant";
-import { CreateRoomDTO, GetAllRoomsDTO, UpdateRoomDTO } from "./dto/room.dto";
+} from "../../../generated/prisma/client.js";
+import { CloudinaryService } from "../../cloudinary/cloudinary.service.js";
+import { prisma } from "../../lib/prisma.js";
+import { ApiError } from "../../utils/api-error.js";
+import { TenantService } from "../tenant/resolve-tenant.js";
+import { CreateRoomDTO, GetAllRoomsDTO, UpdateRoomDTO } from "./dto/room.dto.js";
 
 export class RoomService {
   private prisma: PrismaClient;

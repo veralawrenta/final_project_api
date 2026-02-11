@@ -1,8 +1,7 @@
 import { Router } from "express";
-import { JWT_RESET_SECRET, JWT_VERIFY_SECRET } from "../../config/env";
-import { JWTMiddleware } from "../../middlewares/jwt.middleware";
-import { validateBody } from "../../middlewares/validation.middleware";
-import { AuthController } from "./auth.controller";
+import { JWTMiddleware } from "../../middlewares/jwt.middleware.js";
+import { validateBody } from "../../middlewares/validation.middleware.js";
+import { AuthController } from "./auth.controller.js";
 import {
   ChangePasswordDTO,
   ForgotPasswordDTO,
@@ -11,7 +10,7 @@ import {
   RegisterUserDTO,
   ResetPasswordDTO,
   SetPasswordDTO,
-} from "./dto/auth.dto";
+} from "./dto/auth.dto.js";
 
 export class AuthRouter {
   private router: Router;

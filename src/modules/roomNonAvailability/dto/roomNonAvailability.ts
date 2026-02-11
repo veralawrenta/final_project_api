@@ -7,8 +7,8 @@ import {
   IsString,
   Min,
 } from "class-validator";
-import { IsDateOnly } from "../../../validators/is-date-only.validator";
-import { PaginationQueryParams } from "../../pagination/dto/pagination.dto";
+import { IsDateOnly } from "../../../validators/is-date-only.validator.js";
+import { PaginationQueryParams } from "../../pagination/dto/pagination.dto.js";
 
 export class CreateRoomNonAvailabilityDTO {
   @IsNotEmpty()

@@ -1,21 +1,21 @@
 import cors from "cors";
 import express, { Express } from "express";
 import "reflect-metadata";
-import { PORT } from "./config/env";
-import { errorMiddleware } from "./middlewares/error.middleware";
-import { AmenityRouter } from "./modules/amenity/amenity.router";
-import { AuthRouter } from "./modules/auth/auth.router";
-import { CityRouter } from "./modules/city/city.router";
-import { OAuthRouter } from "./modules/oAuth/oAuth.router";
-import { PropertyRouter } from "./modules/property/property.router";
-import { UserRouter } from "./modules/user/user.router";
-import { RoomNonAvailabilityRouter } from "./modules/roomNonAvailability/roomNonAvailability.router";
-import { PropertyImagesRouter } from "./modules/propertyImage/propertyImage.router";
-import { RoomImageRouter } from "./modules/roomImage/roomImage.router";
-import { SeasonalRateRouter } from "./modules/seasonalRates/seasonalRates.router";
-import { RoomRouter } from "./modules/room/room.router";
-import { CategoryRouter } from "./modules/category/category.router";
-import { DashboardRouter } from "./modules/dashboard/dashboard.router";
+import { PORT } from "./config/env.js";
+import { AmenityRouter } from "./modules/amenity/amenity.router.js";
+import { AuthRouter } from "./modules/auth/auth.router.js";
+import { CityRouter } from "./modules/city/city.router.js";
+import { OAuthRouter } from "./modules/oAuth/oAuth.router.js";
+import { PropertyRouter } from "./modules/property/property.router.js";
+import { UserRouter } from "./modules/user/user.router.js";
+import { RoomNonAvailabilityRouter } from "./modules/roomNonAvailability/roomNonAvailability.router.js";
+import { PropertyImagesRouter } from "./modules/propertyImage/propertyImage.router.js";
+import { RoomImageRouter } from "./modules/roomImage/roomImage.router.js";
+import { SeasonalRateRouter } from "./modules/seasonalRates/seasonalRates.router.js";
+import { RoomRouter } from "./modules/room/room.router.js";
+import { CategoryRouter } from "./modules/category/category.router.js";
+import { DashboardRouter } from "./modules/dashboard/dashboard.router.js";
+import { errorMiddleware } from "./middlewares/error.middleware.js";
 
 export class App {
   app: Express;

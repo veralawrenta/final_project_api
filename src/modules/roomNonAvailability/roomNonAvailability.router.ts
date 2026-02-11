@@ -1,13 +1,13 @@
 import { Router } from "express";
-import { RoomNonAvailabilityController } from "./roomNonAvailability.controller";
-import { JWTMiddleware } from "../../middlewares/jwt.middleware";
-import { RoleMiddleware } from "../../middlewares/role.middleware";
-import { validateBody } from "../../middlewares/validation.middleware";
+import { RoomNonAvailabilityController } from "./roomNonAvailability.controller.js";
+import { JWTMiddleware } from "../../middlewares/jwt.middleware.js";
+import { RoleMiddleware } from "../../middlewares/role.middleware.js";
+import { validateBody } from "../../middlewares/validation.middleware.js";
 import {
   CreateRoomNonAvailabilityDTO,
   GetRoomNonAvailabilitiesByTenant,
   UpdateRoomNonAvailabilityDTO,
-} from "./dto/roomNonAvailability";
+} from "./dto/roomNonAvailability.js";
 
 export class RoomNonAvailabilityRouter {
   router: Router;

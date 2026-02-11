@@ -9,10 +9,10 @@ import {
   Min,
   ValidateNested,
 } from "class-validator";
-import { PaginationQueryParams } from "../../pagination/dto/pagination.dto";
+import { PaginationQueryParams } from "../../pagination/dto/pagination.dto.js";
 import { Type } from "class-transformer";
-import { CreateRoomImageDTO } from "../../roomImage/dto/roomImage.dto";
-import { PropertyType } from "../../../../generated/prisma/enums";
+import { CreateRoomImageDTO } from "../../roomImage/dto/roomImage.dto.js";
+import { PropertyType } from "../../../../generated/prisma/enums.js";
 
 export class CreateRoomDTO {
   @IsNotEmpty()

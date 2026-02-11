@@ -1,8 +1,8 @@
 import { plainToInstance } from "class-transformer";
 import { Request, Response } from "express";
-import { ApiError } from "../../utils/api-error";
-import { UpdateDataTenantDTO, UpdateDataUserDTO } from "./dto/user-dto";
-import { UserService } from "./user.service";
+import { ApiError } from "../../utils/api-error.js";
+import { UpdateDataTenantDTO, UpdateDataUserDTO } from "./dto/user-dto.js";
+import { UserService } from "./user.service.js";
 
 export class UserController {
   userService: UserService;

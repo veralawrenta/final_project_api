@@ -3,7 +3,7 @@ import {
   ValidationOptions,
   ValidationArguments,
 } from "class-validator";
-import { DATE_ONLY_REGEX } from "../utils/date.utils";
+import { DATE_ONLY_REGEX } from "../utils/date.utils.js";
 
 export function IsDateOnly(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string) {
