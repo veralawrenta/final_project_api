@@ -131,15 +131,15 @@ export class CreatePropertyDTO {
   @IsEnum(PropertyType)
   propertyType!: PropertyType;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsNumber()
   @Type(() => Number)
-  latitude?: number;
+  latitude!: number;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsNumber()
   @Type(() => Number)
-  longitude?: number;
+  longitude!: number;
 
   @IsOptional()
   @IsArray()
