@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import { ApiError } from "../utils/api-error";
-import { Role } from "../../generated/prisma/client";
-import { prisma } from "../lib/prisma";
+import { ApiError } from "../utils/api-error.js";
+import { Role } from "../../generated/prisma/client.js";
+import { prisma } from "../lib/prisma.js";
 
 export class RoleMiddleware {
   requireRoles = (...allowedRoles: Role[]) => {
