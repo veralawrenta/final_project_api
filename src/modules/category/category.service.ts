@@ -1,7 +1,7 @@
 import { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import { resolveTenantByUserId } from "../services/shared/resolve-tenant";
+import { TenantService } from "../tenant/resolve-tenant";
 import {
   CreateCategoryDTO,
   GetAllCategoriesDTO,
@@ -10,9 +10,11 @@ import {
 
 export class CategoryService {
   private prisma: PrismaClient;
+  tenantService : TenantService;
 
   constructor() {
     this.prisma = prisma;
+    this.tenantService = new TenantService();
   }
 
   getAllCategoriesByTenant = async (
@@ -21,7 +23,7 @@ export class CategoryService {
   ) => {
     const { page, take, sortBy, sortOrder, search } = query;
 
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     
     const whereClause: Prisma.CategoryWhereInput = {
       tenantId: tenant.id,
@@ -66,7 +68,7 @@ export class CategoryService {
   };
 
   getCategoryById = async (id: number, authUserId: number) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     const category = await this.prisma.category.findFirst({
       where: { id, tenantId: tenant.id, deletedAt: null },
       include: {
@@ -90,7 +92,7 @@ export class CategoryService {
     authUserId: number,
     body: CreateCategoryDTO
   ) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     const existingCategory = await this.prisma.category.findFirst({
       where: {
         name: body.name,
@@ -115,7 +117,7 @@ export class CategoryService {
     authUserId: number,
     body: UpdateCategoryDTO
   ) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     const category = await this.prisma.category.findFirst({
       where: { id, tenantId: tenant.id, deletedAt: null },
     });
@@ -133,7 +135,7 @@ export class CategoryService {
   };
 
   deleteCategory = async (id: number, authUserId: number) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     const category = await this.prisma.category.findFirst({
       where: { id, tenantId: tenant.id, deletedAt: null },
     });

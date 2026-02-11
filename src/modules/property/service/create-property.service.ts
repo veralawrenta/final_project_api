@@ -8,18 +8,20 @@ import { prisma } from "../../../lib/prisma";
 import { ApiError } from "../../../utils/api-error";
 import { AmenityService } from "../../amenity/amenity.service";
 import { RedisService } from "../../redis/redis.service";
-import { resolveTenantByUserId } from "../../services/shared/resolve-tenant";
+import { TenantService } from "../../tenant/resolve-tenant";
 import { CreatePropertyDTO } from "../dto/property.dto";
 
 export class CreatePropertyService {
   private prisma: PrismaClient;
   private amenityService: AmenityService;
+  private tenantService : TenantService;
   private redis: RedisService;
   private cloudinaryService: CloudinaryService;
 
   constructor() {
     this.prisma = prisma;
     this.amenityService = new AmenityService();
+    this.tenantService = new TenantService();
     this.redis = new RedisService();
     this.cloudinaryService = new CloudinaryService();
   }
@@ -56,7 +58,7 @@ export class CreatePropertyService {
     }
     try {
       return await this.prisma.$transaction(async (tx) => {
-        const tenant = await resolveTenantByUserId(authUserId);
+        const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
         const existingProperty = await tx.property.findFirst({
           where: {
             tenantId: tenant.id,
@@ -137,9 +139,8 @@ export class CreatePropertyService {
       throw error;
     }
   };
-  //this is for draft one if they cannot finish the property image and create property data
   validatePropertyStepOne = async (id: number, authUserId: number) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
 
     const property = await this.prisma.property.findFirst({
       where: { id, tenantId: tenant.id, deletedAt: null },
@@ -209,7 +210,7 @@ export class CreatePropertyService {
   };
 
   publishProperty = async (id: number, authUserId: number) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
 
     const publishability = await this.validatePropertyPublish(id, tenant);
 
@@ -248,7 +249,7 @@ export class CreatePropertyService {
   };
 
   unpublishProperty = async (id: number, authUserId: number) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     const property = await this.prisma.property.findFirst({
       where: { id, tenantId: tenant.id, deletedAt: null },
     });

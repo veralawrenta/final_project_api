@@ -6,20 +6,22 @@ import {
 import { CloudinaryService } from "../../cloudinary/cloudinary.service";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import { resolveTenantByUserId } from "../services/shared/resolve-tenant";
+import { TenantService } from "../tenant/resolve-tenant";
 import { CreateRoomDTO, GetAllRoomsDTO, UpdateRoomDTO } from "./dto/room.dto";
 
 export class RoomService {
   private prisma: PrismaClient;
+  tenantService : TenantService;
   cloudinaryService: CloudinaryService;
 
   constructor() {
     this.prisma = prisma;
+    this.tenantService = new TenantService();
     this.cloudinaryService = new CloudinaryService();
   }
 
   getAllRoomsByProperty = async (authUserId: number, propertyId: number) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     const property = await this.prisma.property.findFirst({
       where: { id: propertyId, tenantId: tenant.id, deletedAt: null },
     });
@@ -53,7 +55,7 @@ export class RoomService {
 
   getAllRoomsByTenant = async (authUserId: number, query: GetAllRoomsDTO) => {
     const { page, take, sortBy, sortOrder, search, propertyType } = query;
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
 
     const whereClause: Prisma.RoomWhereInput = {
       deletedAt: null,
@@ -185,7 +187,7 @@ export class RoomService {
     body: CreateRoomDTO,
     urlImages: Express.Multer.File[]
   ) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     const property = await this.prisma.property.findFirst({
       where: { id: propertyId, tenantId: tenant.id, deletedAt: null },
       include: {
@@ -262,7 +264,7 @@ export class RoomService {
     authUserId: number,
     body: Partial<UpdateRoomDTO>
   ) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     const room = await this.prisma.room.findFirst({
       where: { id, deletedAt: null },
       include: { property: true },
@@ -308,7 +310,7 @@ export class RoomService {
   };
 
   deleteRoom = async (id: number, authUserId: number) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     const room = await this.prisma.room.findFirst({
       where: { id, deletedAt: null },
       include: {

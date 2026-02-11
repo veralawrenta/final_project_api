@@ -19,16 +19,18 @@ import {
   UpdatePropertyDTO,
 } from "../dto/property.dto";
 import { AmenityService } from "../../amenity/amenity.service";
-import { resolveTenantByUserId } from "../../services/shared/resolve-tenant";
+import { TenantService } from "../../tenant/resolve-tenant";
 
 export class PropertyService {
   private prisma: PrismaClient;
   private amenityService: AmenityService;
+  tenantService : TenantService;
   private redis: RedisService;
 
   constructor() {
     this.prisma = prisma;
     this.amenityService = new AmenityService();
+    this.tenantService = new TenantService();
     this.redis = new RedisService();
   }
   //redis cache
@@ -431,7 +433,7 @@ export class PropertyService {
     query: GetAllPropertiesDTO
   ) => {
     const { page, take, sortBy, sortOrder, search } = query;
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
 
     const whereClause: Prisma.PropertyWhereInput = {
       tenantId: tenant.id,
@@ -528,7 +530,7 @@ export class PropertyService {
   };
 
   getPropertyIdByTenant = async (id: number, authUserId: number) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
 
     const property = await this.prisma.property.findFirst({
       where: {
@@ -789,7 +791,7 @@ export class PropertyService {
     authUserId: number,
     body: Partial<UpdatePropertyDTO>
   ) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     const property = await this.prisma.property.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -878,7 +880,7 @@ export class PropertyService {
 
   deletePropertyById = async (id: number, authUserId: number) => {
     try {
-      const tenant = await resolveTenantByUserId(authUserId);
+      const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
   
       const property = await this.prisma.property.findFirst({
         where: {

@@ -77,7 +77,7 @@ export class RoomController {
 
   deleteRoom = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
-    const authUserId = Number(res.locals.user.tenant.id);
+    const authUserId = Number(res.locals.user.id);
     if (!authUserId) {
       throw new ApiError("Unauthorized", 403);
     };

@@ -2,17 +2,19 @@ import { PrismaClient, PropertyStatus } from "../../../generated/prisma/client";
 import { CloudinaryService } from "../../cloudinary/cloudinary.service";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import { resolveTenantByUserId } from "../services/shared/resolve-tenant";
+import { TenantService } from "../tenant/resolve-tenant";
 import {
   CreatePropertyImageDTO
 } from "./dto/propertyImage.dto";
 
 export class PropertyImagesService {
   private prisma: PrismaClient;
+  tenantService : TenantService;
   private cloudinaryService: CloudinaryService;
 
   constructor() {
     this.prisma = prisma;
+    this.tenantService = new TenantService();
     this.cloudinaryService = new CloudinaryService();
   }
 
@@ -29,7 +31,7 @@ export class PropertyImagesService {
     urlImages: Express.Multer.File,
     body: CreatePropertyImageDTO
   ) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     
     const property = await this.prisma.property.findFirst({
       where: { id: propertyId, deletedAt: null },
@@ -80,7 +82,7 @@ export class PropertyImagesService {
   };
 
   deletePropertyImage = async (id: number, authUserId: number) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     const image = await this.prisma.propertyImage.findFirst({
       where: { id,  deletedAt: null },
       include: {

@@ -1,22 +1,24 @@
 import { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import { getTodayDateOnly, formattedDate } from "../../utils/date.utils";
+import { formattedDate, getTodayDateOnly } from "../../utils/date.utils";
 import { RedisService } from "../redis/redis.service";
-import { PaginationQueryParams } from "../pagination/dto/pagination.dto";
+import { TenantService } from "../tenant/resolve-tenant";
 import {
   CreateRoomNonAvailabilityDTO,
   GetRoomNonAvailabilitiesByTenant,
   UpdateRoomNonAvailabilityDTO,
 } from "./dto/roomNonAvailability";
-import { resolveTenantByUserId } from "../services/shared/resolve-tenant";
+
 
 export class RoomNonAvailabilityService {
   private prisma: PrismaClient;
+  tenantService : TenantService;
   private redis: RedisService;
 
   constructor() {
     this.prisma = prisma;
+    this.tenantService = new TenantService();
     this.redis = new RedisService();
   }
 
@@ -32,7 +34,7 @@ export class RoomNonAvailabilityService {
     roomId: number,
     body: CreateRoomNonAvailabilityDTO
   ) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     const room = await this.prisma.room.findFirst({
       where: { id: roomId, property: { tenantId: tenant.id }, deletedAt: null },
       include: { property: true },
@@ -94,7 +96,7 @@ export class RoomNonAvailabilityService {
     authUserId: number,
     body: Partial<UpdateRoomNonAvailabilityDTO>
   ) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
 
     const maintenanceBlock = await this.prisma.roomNonAvailability.findFirst({
       where: { id, deletedAt: null },
@@ -160,7 +162,7 @@ export class RoomNonAvailabilityService {
   };
 
   deleteroomNonAvailability = async (id: number, authUserId: number) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
 
     const maintenance = await this.prisma.roomNonAvailability.findFirst({
       where: { id, deletedAt: null },
@@ -194,7 +196,7 @@ export class RoomNonAvailabilityService {
     query: GetRoomNonAvailabilitiesByTenant
   ) => {
     const { page, take, sortBy, sortOrder, search } = query;
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
 
     const whereClause: Prisma.RoomNonAvailabilityWhereInput = {
       deletedAt: null,
@@ -256,7 +258,7 @@ export class RoomNonAvailabilityService {
     authUserId: number,
     roomId: number
   ) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
 
     const room = await this.prisma.room.findFirst({
       where: {

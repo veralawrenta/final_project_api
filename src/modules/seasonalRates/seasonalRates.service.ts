@@ -7,7 +7,7 @@ import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
 import { getTodayDateOnly, formattedDate } from "../../utils/date.utils";
 import { RedisService } from "../redis/redis.service";
-import { resolveTenantByUserId } from "../services/shared/resolve-tenant";
+import { TenantService } from "../tenant/resolve-tenant";
 import {
   CreateSeasonalRatesDTO,
   GetSeasonalRatesDTO,
@@ -16,10 +16,12 @@ import {
 
 export class SeasonalRatesService {
   private prisma: PrismaClient;
+  tenantService : TenantService;
   private redis: RedisService;
 
   constructor() {
     this.prisma = prisma;
+    this.tenantService = new TenantService();
     this.redis = new RedisService();
   }
 
@@ -34,7 +36,7 @@ export class SeasonalRatesService {
     authUserId: number,
     body: CreateSeasonalRatesDTO
   ) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
 
     const startDate = formattedDate(body.startDate);
     const endDate = formattedDate(body.endDate);
@@ -135,7 +137,7 @@ export class SeasonalRatesService {
     query: GetSeasonalRatesDTO
   ) => {
     const { page, take, sortBy, sortOrder, search } = query;
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
 
     const whereClause: Prisma.SeasonalRateWhereInput = {
       deletedAt: null,
@@ -213,7 +215,7 @@ export class SeasonalRatesService {
   };
 
   getSeasonalRateById = async (id: number, authUserId: number) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
 
     const seasonalRate = await this.prisma.seasonalRate.findFirst({
       where: { id, deletedAt: null },
@@ -258,7 +260,7 @@ export class SeasonalRatesService {
     authUserId: number,
     body: UpdateSeasonalRatesDTO
   ) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     const seasonalRate = await this.prisma.seasonalRate.findUnique({
       where: { id },
       include: {
@@ -340,7 +342,7 @@ export class SeasonalRatesService {
   };
 
   deleteSeasonalRate = async (id: number, authUserId: number) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
 
     const seasonalRate = await this.prisma.seasonalRate.findUnique({
       where: { id },

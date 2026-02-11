@@ -30,6 +30,7 @@ export class RoomRouter {
     );
     this.router.get(
       "/property/:propertyId",
+      this.jwtMiddleware.verifyToken(process.env.JWT_ACCESS_SECRET!),
       this.roomController.getAllRoomsByProperty
     );
     this.router.get("/:id", this.roomController.getRoomById);

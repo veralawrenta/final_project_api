@@ -2,15 +2,17 @@ import { PrismaClient, PropertyStatus } from "../../../generated/prisma/client";
 import { CloudinaryService } from "../../cloudinary/cloudinary.service";
 import { prisma } from "../../lib/prisma";
 import { ApiError } from "../../utils/api-error";
-import { resolveTenantByUserId } from "../services/shared/resolve-tenant";
+import { TenantService } from "../tenant/resolve-tenant";
 import { CreateRoomImageDTO, UpdateRoomImageDTO } from "./dto/roomImage.dto";
 
 export class RoomImagesService {
   private prisma: PrismaClient;
+  tenantService : TenantService;
   private cloudinaryService: CloudinaryService;
 
   constructor() {
     this.prisma = prisma;
+    this.tenantService = new TenantService();
     this.cloudinaryService = new CloudinaryService();
   }
 
@@ -28,7 +30,7 @@ export class RoomImagesService {
     body: CreateRoomImageDTO
   ) => {
     
-      const tenant = await resolveTenantByUserId(authUserId);
+      const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
 
       const room = await this.prisma.room.findFirst({
         where: { id: roomId, property: {tenantId: tenant.id}, deletedAt: null },
@@ -74,7 +76,7 @@ export class RoomImagesService {
   };
 
   deleteRoomImage = async (id: number, authUserId: number) => {
-    const tenant = await resolveTenantByUserId(authUserId);
+    const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
     const image = await this.prisma.roomImage.findFirst({
       
       where: { id, deletedAt: null },
