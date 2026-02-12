@@ -22,7 +22,7 @@ import { TenantService } from "../../tenant/resolve-tenant.js";
 export class PropertyService {
   private prisma: PrismaClient;
   private amenityService: AmenityService;
-  tenantService : TenantService;
+  tenantService: TenantService;
 
   constructor() {
     this.prisma = prisma;
@@ -300,7 +300,10 @@ export class PropertyService {
       where: { id, propertyStatus: PropertyStatus.PUBLISHED, deletedAt: null },
       include: {
         propertyImages: { where: { deletedAt: null } },
-        amenities: { where: { deletedAt: null }, select: {amenity: { select: {id: true, code: true, name:true}}}},
+        amenities: {
+          where: { deletedAt: null },
+          select: { amenity: { select: { id: true, code: true, name: true } } },
+        },
         city: true,
         category: true,
         tenant: true,
@@ -409,9 +412,14 @@ export class PropertyService {
       whereClause.name = { contains: search, mode: "insensitive" };
     }
 
+    const orderBy: Prisma.PropertyOrderByWithRelationInput =
+      sortBy === "name"
+        ? { name: sortOrder as Prisma.SortOrder }
+        : { name: "asc" };
+
     const properties = await this.prisma.property.findMany({
       where: whereClause,
-      orderBy: { [sortBy]: sortOrder },
+      orderBy,
       skip: (page - 1) * take,
       take: take,
       select: {
@@ -421,7 +429,11 @@ export class PropertyService {
         category: { select: { id: true, name: true } },
         city: { select: { id: true, name: true } },
         propertyStatus: true,
-        propertyImages: { where: { deletedAt: null }, select: { id: true, urlImages: true, isCover: true }, orderBy: {isCover:"desc"}},
+        propertyImages: {
+          where: { deletedAt: null },
+          select: { id: true, urlImages: true, isCover: true },
+          orderBy: { isCover: "desc" },
+        },
         rooms: {
           where: { deletedAt: null },
           select: {
@@ -435,8 +447,6 @@ export class PropertyService {
     });
 
     const data = properties.map((property) => {
-      const hasPropertyImages = property.propertyImages.length > 0;
-
       const publishableRooms = property.rooms.filter(
         (room) =>
           room.roomImages.length > 0 &&
@@ -458,9 +468,17 @@ export class PropertyService {
         lowestPrice,
         totalRooms: property.rooms.length,
         propertyImages: property.propertyImages,
-        status: property.propertyStatus
+        status: property.propertyStatus,
       };
     });
+
+    if (sortBy === "price") {
+      data.sort((a, b) => {
+        const priceA = a.lowestPrice ?? Infinity;
+        const priceB = b.lowestPrice ?? Infinity;
+        return sortOrder === "asc" ? priceA - priceB : priceB - priceA;
+      });
+    }
     const count = await this.prisma.property.count({
       where: whereClause,
     });
@@ -476,7 +494,10 @@ export class PropertyService {
       where: { id, propertyStatus: PropertyStatus.PUBLISHED, deletedAt: null },
       include: {
         propertyImages: { where: { deletedAt: null } },
-        amenities: {where: {deletedAt: null}, select: {amenity: {select: {id: true, code:true, name: true}}}},
+        amenities: {
+          where: { deletedAt: null },
+          select: { amenity: { select: { id: true, code: true, name: true } } },
+        },
         category: { where: { deletedAt: null } },
         city: true,
         tenant: true,
@@ -592,7 +613,7 @@ export class PropertyService {
       cityId: property.city.id,
       city: property.city.name,
       categoryId: property.category?.id,
-      category : property.category?.name,
+      category: property.category?.name,
       status,
       hasPropertyImages,
       hasPublishableRoom,
@@ -833,7 +854,7 @@ export class PropertyService {
   deletePropertyById = async (id: number, authUserId: number) => {
     try {
       const tenant = await this.tenantService.resolveTenantByUserId(authUserId);
-  
+
       const property = await this.prisma.property.findFirst({
         where: {
           id,
@@ -863,40 +884,40 @@ export class PropertyService {
           },
         },
       });
-  
+
       if (!property) {
         throw new ApiError("Property not found", 404);
       }
-  
+
       if (property.rooms.some((r) => r.transactions.length > 0)) {
         throw new ApiError(
           "Cannot delete property with active or upcoming bookings",
           400
         );
       }
-  
+
       if (property.rooms.some((r) => r.roomNonAvailability.length > 0)) {
         throw new ApiError(
           "Cannot delete property with active or upcoming maintenance schedule",
           400
         );
       }
-  
+
       const roomIds = property.rooms.map((r) => r.id);
       const now = new Date();
-  
+
       await this.prisma.$transaction(async (tx) => {
         if (roomIds.length > 0) {
           await tx.roomImage.updateMany({
             where: { roomId: { in: roomIds } },
             data: { deletedAt: now },
           });
-  
+
           await tx.roomNonAvailability.updateMany({
             where: { roomId: { in: roomIds } },
             data: { deletedAt: now },
           });
-  
+
           await tx.seasonalRate.updateMany({
             where: {
               OR: [{ roomId: { in: roomIds } }, { propertyId: id }],
@@ -904,37 +925,34 @@ export class PropertyService {
             data: { deletedAt: now },
           });
         }
-  
+
         await tx.room.updateMany({
           where: { propertyId: id },
           data: { deletedAt: now },
         });
-  
+
         await tx.propertyAmenity.updateMany({
           where: { propertyId: id },
           data: { deletedAt: now },
         });
-  
+
         await tx.propertyImage.updateMany({
           where: { propertyId: id },
           data: { deletedAt: now },
         });
-  
+
         await tx.property.update({
           where: { id },
           data: { deletedAt: now },
         });
       });
-  
+
       return { success: true };
     } catch (err) {
       if (err instanceof ApiError) {
         throw err;
       }
-      throw new ApiError(
-        "Internal server error while deleting property",
-        500
-      );
+      throw new ApiError("Internal server error while deleting property", 500);
     }
   };
 }
