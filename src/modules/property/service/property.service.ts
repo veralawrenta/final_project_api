@@ -146,10 +146,11 @@ export class PropertyService {
     }
 
     const whereClause: Prisma.PropertyWhereInput = {
-      cityId,
       propertyStatus: PropertyStatus.PUBLISHED,
       deletedAt: null,
     };
+
+    if (cityId) { whereClause.cityId = cityId }
     //for filtering and search purposes
     if (propertyType) whereClause.propertyType = propertyType;
     if (search) whereClause.name = { contains: search, mode: "insensitive" };

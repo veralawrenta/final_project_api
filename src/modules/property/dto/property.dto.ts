@@ -25,10 +25,10 @@ export enum SortOrderEnum {
 }
 
 export class GetSearchAvailablePropertiesDTO extends PaginationQueryParams {
-  @IsNotEmpty()
+  @IsOptional()
   @IsNumber()
   @Transform(({ value }) => parseInt(value, 10))
-  cityId!: number;
+  cityId?: number;
   
   @IsNotEmpty()
   @IsDateOnly()
