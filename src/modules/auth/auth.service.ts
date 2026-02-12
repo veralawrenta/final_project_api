@@ -301,6 +301,7 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: { email: body.email },
     });
+
     if (!user) {
       throw new ApiError("user not found", 404);
     }

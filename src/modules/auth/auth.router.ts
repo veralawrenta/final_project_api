@@ -8,6 +8,7 @@ import {
   LoginDTO,
   RegisterTenantDTO,
   RegisterUserDTO,
+  ResendVerificationDTO,
   ResetPasswordDTO,
   SetPasswordDTO,
 } from "./dto/auth.dto.js";
@@ -47,6 +48,7 @@ export class AuthRouter {
     );
     this.router.post(
       "/resend-verification",
+      validateBody(ResendVerificationDTO),
       this.authController.resendVerificationEmail
     );
     this.router.patch(

@@ -7,6 +7,7 @@ import {
   LoginDTO,
   RegisterTenantDTO,
   RegisterUserDTO,
+  ResendVerificationDTO,
   ResetPasswordDTO,
   SetPasswordDTO,
 } from "./dto/auth.dto.js";
@@ -77,8 +78,8 @@ export class AuthController {
   };
 
   resendVerificationEmail = async (req: Request, res: Response) => {
-    const { email } = req.body;
-    const result = await this.authService.resendVerificationEmail(email);
+    const data = plainToInstance(ResendVerificationDTO, req.body);
+    const result = await this.authService.resendVerificationEmail(data);
     return res.status(200).send(result);
   };
 
