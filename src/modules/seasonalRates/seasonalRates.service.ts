@@ -6,7 +6,6 @@ import {
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
 import { getTodayDateOnly, formattedDate } from "../../utils/date.utils.js";
-import { RedisService } from "../redis/redis.service.js";
 import { TenantService } from "../tenant/resolve-tenant.js";
 import {
   CreateSeasonalRatesDTO,
@@ -17,20 +16,11 @@ import {
 export class SeasonalRatesService {
   private prisma: PrismaClient;
   tenantService : TenantService;
-  private redis: RedisService;
 
   constructor() {
     this.prisma = prisma;
     this.tenantService = new TenantService();
-    this.redis = new RedisService();
   }
-
-  private invalidatePropertySearchCache = async (propertyId: number) => {
-    // Search results depend on seasonal pricing and availability
-    await this.redis.delByPrefix("property:search:");
-    // Calendar cache is per property
-    await this.redis.delByPrefix(`property:calendar30:${propertyId}:`);
-  };
 
   createSeasonalRate = async (
     authUserId: number,
@@ -128,7 +118,6 @@ export class SeasonalRatesService {
       return { seasonalRate, propertyId };
     });
 
-    await this.invalidatePropertySearchCache(created.propertyId);
     return created.seasonalRate;
   };
 
@@ -334,10 +323,6 @@ export class SeasonalRatesService {
       },
     });
 
-    const propertyId =
-      seasonalRate.room?.property.id || seasonalRate.property!.id;
-
-    await this.invalidatePropertySearchCache(propertyId);
     return updatedSeasonalRate;
   };
 
@@ -380,10 +365,6 @@ export class SeasonalRatesService {
       where: { id },
       data: { deletedAt: new Date() },
     });
-
-    const propertyId =
-      seasonalRate.room?.property.id || seasonalRate.property!.id;
-    await this.invalidatePropertySearchCache(propertyId);
 
     return { message: "Seasonal rate deleted successfully" };
   };

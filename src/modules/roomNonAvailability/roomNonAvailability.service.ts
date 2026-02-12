@@ -2,7 +2,6 @@ import { Prisma, PrismaClient } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
 import { formattedDate, getTodayDateOnly } from "../../utils/date.utils.js";
-import { RedisService } from "../redis/redis.service.js";
 import { TenantService } from "../tenant/resolve-tenant.js";
 import {
   CreateRoomNonAvailabilityDTO,
@@ -14,20 +13,11 @@ import {
 export class RoomNonAvailabilityService {
   private prisma: PrismaClient;
   tenantService : TenantService;
-  private redis: RedisService;
 
   constructor() {
     this.prisma = prisma;
     this.tenantService = new TenantService();
-    this.redis = new RedisService();
   }
-
-  private invalidatePropertySearchCache = async (propertyId: number) => {
-    // Search results depend on maintenance availability
-    await this.redis.delByPrefix("property:search:");
-    // Calendar cache is per property
-    await this.redis.delByPrefix(`property:calendar30:${propertyId}:`);
-  };
 
   createRoomNonAvailability = async (
     authUserId: number,
@@ -78,7 +68,7 @@ export class RoomNonAvailabilityService {
         400
       );
     }
-    const roomNonAvailability = await this.prisma.roomNonAvailability.create({
+    return await this.prisma.roomNonAvailability.create({
       data: {
         roomId,
         startDate,
@@ -87,8 +77,6 @@ export class RoomNonAvailabilityService {
         roomInventory: body.roomInventory,
       },
     });
-    await this.invalidatePropertySearchCache(room.property.id);
-    return roomNonAvailability;
   };
 
   updateRoomNonAvailability = async (
@@ -147,18 +135,15 @@ export class RoomNonAvailabilityService {
         400
       );
     }
-    const updatedRoomNonAvailability =
-      await this.prisma.roomNonAvailability.update({
-        where: { id },
-        data: {
-          startDate,
-          endDate,
-          reason: body.reason,
-          roomInventory,
-        },
-      });
-    await this.invalidatePropertySearchCache(maintenanceBlock.room.property.id);
-    return updatedRoomNonAvailability;
+    return await this.prisma.roomNonAvailability.update({
+      where: { id },
+      data: {
+        startDate,
+        endDate,
+        reason: body.reason,
+        roomInventory,
+      },
+    });
   };
 
   deleteroomNonAvailability = async (id: number, authUserId: number) => {
@@ -181,14 +166,12 @@ export class RoomNonAvailabilityService {
       throw new ApiError("Forbidden", 403);
     }
 
-    const deletedMaintenance = await this.prisma.roomNonAvailability.update({
+    return await this.prisma.roomNonAvailability.update({
       where: { id },
       data: {
         deletedAt: new Date(),
       },
     });
-    await this.invalidatePropertySearchCache(maintenance.room.property.id);
-    return deletedMaintenance;
   };
 
   getAllRoomNonAvailabilitiesByTenant = async (

@@ -10,8 +10,6 @@ import {
   getTodayDateOnly,
   toDateOnlyString,
 } from "../../../utils/date.utils.js";
-import { RedisService } from "../../redis/redis.service.js";
-import crypto from "node:crypto";
 import {
   GetAllPropertiesDTO,
   GetPropertyAvailabilityQueryDTO,
@@ -25,30 +23,12 @@ export class PropertyService {
   private prisma: PrismaClient;
   private amenityService: AmenityService;
   tenantService : TenantService;
-  private redis: RedisService;
 
   constructor() {
     this.prisma = prisma;
     this.amenityService = new AmenityService();
     this.tenantService = new TenantService();
-    this.redis = new RedisService();
   }
-  //redis cache
-  private SEARCH_CACHE_TTL_SECONDS = 60;
-  private CALENDAR_CACHE_TTL_SECONDS = 300;
-  private async invalidatePropertyCaches(propertyId: number) {
-    await this.redis.delByPrefix("property:search:");
-    await this.redis.delByPrefix(`property:calendar30:${propertyId}:`);
-  }
-
-  private buildCacheKey = (prefix: string, params: Record<string, unknown>) => {
-    const entries = Object.entries(params)
-      .filter(([, v]) => v !== undefined && v !== null && v !== "")
-      .sort(([a], [b]) => a.localeCompare(b));
-    const raw = entries.map(([k, v]) => `${k}=${String(v)}`).join("&");
-    const hash = crypto.createHash("sha1").update(raw).digest("hex");
-    return `${prefix}:${hash}`;
-  };
 
   getAllProperties = async (query: GetAllPropertiesDTO) => {
     const { page, take, sortBy, sortOrder, search, propertyType } = query;
@@ -145,13 +125,6 @@ export class PropertyService {
   getSearchAvailableProperties = async (
     query: GetSearchAvailablePropertiesDTO
   ) => {
-    const cacheKey = this.buildCacheKey(
-      "property:search",
-      query as unknown as Record<string, unknown>
-    );
-    const cached = await this.redis.getValue(cacheKey); //this to check if this search had been implemented before
-    if (cached) return JSON.parse(cached);
-
     const {
       cityId,
       checkIn,
@@ -306,18 +279,10 @@ export class PropertyService {
     const total = results.length;
     const paginated = sorted.slice((page - 1) * take, page * take);
 
-    const response = {
+    return {
       data: paginated,
       meta: { page, take, total },
     };
-
-    await this.redis.setValue(
-      //requesting to memorize this requirement
-      cacheKey,
-      JSON.stringify(response),
-      this.SEARCH_CACHE_TTL_SECONDS
-    );
-    return response;
   };
 
   getPropertyByIdWithAvailability = async (
@@ -640,11 +605,6 @@ export class PropertyService {
   };
 
   get30DayPropertyCalendar = async (id: number, startDates?: string) => {
-    const startKey = startDates ?? toDateOnlyString(getTodayDateOnly());
-    const cacheKey = `property:calendar30:${id}:${startKey}`;
-    const cached = await this.redis.getValue(cacheKey);
-    if (cached) return JSON.parse(cached);
-
     const startDate = startDates
       ? formattedDate(startDates)
       : getTodayDateOnly();
@@ -772,18 +732,11 @@ export class PropertyService {
       });
     }
 
-    const response = {
+    return {
       propertyId: property.id,
       propertyName: property.name,
       calendar,
     };
-
-    await this.redis.setValue(
-      cacheKey,
-      JSON.stringify(response),
-      this.CALENDAR_CACHE_TTL_SECONDS
-    );
-    return response;
   };
 
   updateProperty = async (
@@ -873,7 +826,6 @@ export class PropertyService {
           body.amenities
         );
       }
-      await this.invalidatePropertyCaches(id);
       return updatedProperty;
     });
   };

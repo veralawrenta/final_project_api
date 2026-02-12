@@ -7,7 +7,6 @@ import { CloudinaryService } from "../../../cloudinary/cloudinary.service.js";
 import { prisma } from "../../../lib/prisma.js";
 import { ApiError } from "../../../utils/api-error.js";
 import { AmenityService } from "../../amenity/amenity.service.js";
-import { RedisService } from "../../redis/redis.service.js";
 import { TenantService } from "../../tenant/resolve-tenant.js";
 import { CreatePropertyDTO } from "../dto/property.dto.js";
 
@@ -15,23 +14,13 @@ export class CreatePropertyService {
   private prisma: PrismaClient;
   private amenityService: AmenityService;
   private tenantService : TenantService;
-  private redis: RedisService;
   private cloudinaryService: CloudinaryService;
 
   constructor() {
     this.prisma = prisma;
     this.amenityService = new AmenityService();
     this.tenantService = new TenantService();
-    this.redis = new RedisService();
     this.cloudinaryService = new CloudinaryService();
-  }
-
-  private SEARCH_CACHE_TTL_SECONDS = 60;
-  private CALENDAR_CACHE_TTL_SECONDS = 300;
-
-  private async invalidatePropertyCaches(propertyId: number) {
-    await this.redis.delByPrefix("property:search:");
-    await this.redis.delByPrefix(`property:calendar30:${propertyId}:`);
   }
 
   createProperty = async (
@@ -45,7 +34,7 @@ export class CreatePropertyService {
     if (urlImages.length > 10) {
       throw new ApiError("One property can have a maximum of 10 images", 400);
     }
-    let uploadedImageUrls: string[] = []; //upload all images to cloudinary first
+    let uploadedImageUrls: string[] = [];
     try {
       uploadedImageUrls = await Promise.all(
         urlImages.map(async (file) => {
@@ -239,13 +228,10 @@ export class CreatePropertyService {
       );
     }
 
-    const updatedProperty = await this.prisma.property.update({
+    return await this.prisma.property.update({
       where: { id },
       data: { propertyStatus: PropertyStatus.PUBLISHED },
     });
-
-    await this.invalidatePropertyCaches(id);
-    return updatedProperty;
   };
 
   unpublishProperty = async (id: number, authUserId: number) => {
@@ -255,11 +241,9 @@ export class CreatePropertyService {
     });
     if (!property) throw new ApiError("Property not found", 404);
 
-    const updated = await this.prisma.property.update({
+    return await this.prisma.property.update({
       where: { id },
       data: { propertyStatus: PropertyStatus.DRAFT },
     });
-    await this.invalidatePropertyCaches(id);
-    return updated;
   };
 }
