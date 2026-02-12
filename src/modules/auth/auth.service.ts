@@ -252,7 +252,7 @@ export class AuthService {
       "Forgot Password",
       "forgot-password",
       {
-        ResetPasswordLink: `http://localhost:3000/auth/reset-password/${accessToken}`,
+        ResetPasswordLink: `${process.env.FRONTEND_URL}/auth/reset-password/${accessToken}`,
       }
     );
 
