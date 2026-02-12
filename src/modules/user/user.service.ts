@@ -137,6 +137,7 @@ export class UserService {
         firstName: true,
         lastName: true,
         phone: true,
+        provider: true,
         address: true,
         aboutMe: true,
         avatar: true,
